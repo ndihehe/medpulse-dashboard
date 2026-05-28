@@ -1,0 +1,2014 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>MedPulse IoT Dashboard</title>
+	<script>
+		tailwind = {
+			config: {
+				darkMode: 'class',
+				theme: {
+					extend: {
+						fontFamily: {
+							sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui'],
+						},
+						boxShadow: {
+							soft: '0 18px 50px rgba(15, 23, 42, 0.08)',
+							glow: '0 0 0 1px rgba(59, 130, 246, 0.12), 0 20px 40px rgba(56, 189, 248, 0.12)',
+						},
+						colors: {
+							brand: {
+								50: '#eff8ff',
+								100: '#dff2ff',
+								200: '#b9e6ff',
+								300: '#7ed3ff',
+								400: '#4bb9ff',
+								500: '#2196ff',
+								600: '#157be6',
+								700: '#115fb8',
+							},
+							mint: {
+								50: '#effcf4',
+								100: '#d9f8e5',
+								200: '#b7efd0',
+								300: '#86e0b1',
+								400: '#4fca8a',
+								500: '#20b46d',
+							},
+						},
+						keyframes: {
+							floaty: {
+								'0%, 100%': { transform: 'translateY(0px)' },
+								'50%': { transform: 'translateY(-6px)' },
+							},
+							pulseDanger: {
+								'0%, 100%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.45)' },
+								'50%': { transform: 'scale(1.02)', boxShadow: '0 0 0 18px rgba(239, 68, 68, 0)' },
+							},
+							shimmer: {
+								'0%': { backgroundPosition: '-150% 0' },
+								'100%': { backgroundPosition: '150% 0' },
+							},
+							slideIn: {
+								'0%': { opacity: '0', transform: 'translateY(14px)' },
+								'100%': { opacity: '1', transform: 'translateY(0)' },
+							},
+							pop: {
+								'0%': { opacity: '0', transform: 'scale(0.94)' },
+								'100%': { opacity: '1', transform: 'scale(1)' },
+							},
+						},
+						animation: {
+							floaty: 'floaty 7s ease-in-out infinite',
+							pulseDanger: 'pulseDanger 1.2s ease-in-out infinite',
+							shimmer: 'shimmer 1.3s linear infinite',
+							slideIn: 'slideIn 0.45s ease-out both',
+							pop: 'pop 0.24s ease-out both',
+						},
+					},
+				},
+			},
+		};
+	</script>
+	<script src="https://cdn.tailwindcss.com"></script>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+	<style>
+		:root {
+			--bg: 249 250 255;
+			--panel: 255 255 255;
+			--panel-2: 244 248 252;
+			--text: 15 23 42;
+			--muted: 96 110 132;
+			--border: 226 232 240;
+			--shadow: 15 23 42;
+		}
+		.dark {
+			--bg: 8 15 30;
+			--panel: 13 21 36;
+			--panel-2: 17 28 47;
+			--text: 238 243 255;
+			--muted: 148 163 184;
+			--border: 35 47 72;
+			--shadow: 0 0 0;
+		}
+		html, body {
+			height: 100%;
+		}
+		body {
+			margin: 0;
+			font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui;
+			background:
+				radial-gradient(circle at top left, rgba(59, 130, 246, 0.14), transparent 28%),
+				radial-gradient(circle at top right, rgba(32, 180, 109, 0.12), transparent 24%),
+				linear-gradient(180deg, rgb(var(--bg)) 0%, rgb(var(--bg)) 100%);
+			color: rgb(var(--text));
+			transition: background 0.35s ease, color 0.35s ease;
+		}
+		.glass {
+			background: rgba(var(--panel), 0.78);
+			backdrop-filter: blur(18px);
+			-webkit-backdrop-filter: blur(18px);
+			border: 1px solid rgba(var(--border), 0.55);
+		}
+		.card {
+			background: rgb(var(--panel));
+			border: 1px solid rgba(var(--border), 0.7);
+			box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+		}
+		.soft-grid {
+			background-image:
+				linear-gradient(to right, rgba(148,163,184,0.12) 1px, transparent 1px),
+				linear-gradient(to bottom, rgba(148,163,184,0.12) 1px, transparent 1px);
+			background-size: 20px 20px;
+		}
+		.noise {
+			position: absolute;
+			inset: 0;
+			opacity: 0.16;
+			mix-blend-mode: soft-light;
+			pointer-events: none;
+			background-image: radial-gradient(rgba(255,255,255,0.95) 0.6px, transparent 0.6px);
+			background-size: 12px 12px;
+		}
+		.table-scroll::-webkit-scrollbar,
+		.hide-scrollbar::-webkit-scrollbar {
+			height: 10px;
+			width: 10px;
+		}
+		.table-scroll::-webkit-scrollbar-thumb,
+		.hide-scrollbar::-webkit-scrollbar-thumb {
+			background: rgba(148, 163, 184, 0.35);
+			border-radius: 999px;
+		}
+		.sticky-blur {
+			background: rgba(var(--bg), 0.72);
+			backdrop-filter: blur(14px);
+		}
+		.pulse-critical {
+			animation: pulseDanger 1.2s ease-in-out infinite;
+		}
+		.skeleton {
+			background: linear-gradient(90deg, rgba(148,163,184,0.12) 25%, rgba(148,163,184,0.22) 37%, rgba(148,163,184,0.12) 63%);
+			background-size: 400% 100%;
+		}
+	</style>
+</head>
+<body class="text-slate-900 dark:text-slate-100">
+	<div id="app"></div>
+
+	<script src="https://unpkg.com/lucide@latest"></script>
+	<script>
+		const STORAGE_KEY = 'medpulse-dashboard-v1';
+		const THEME_KEY = 'medpulse-theme';
+		const DEMO_PASSWORD = 'demo123';
+
+		const state = {
+			authed: false,
+			screen: 'landing',
+			view: 'dashboard',
+			sidebarOpen: true,
+			darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
+			notificationsOpen: false,
+			profileOpen: false,
+			settingsOpen: false,
+			alertModal: null,
+			toastQueue: [],
+			alertHistory: {},
+			selectedPatientId: null,
+			search: '',
+			filter: 'all',
+			sort: 'risk',
+			page: 1,
+			pageSize: 8,
+			loading: true,
+			realtime: true,
+			kioskStatus: 'online',
+			mqttStatus: 'connected',
+			wifiStatus: 'stable',
+			inputName: '',
+			inputEmail: '',
+			loginPin: '',
+			loginMode: 'staff',
+			historyRange: '7d',
+			dateRange: '24h',
+			floorFocus: 'north-wing',
+			soundEnabled: true,
+		};
+
+		const patientPool = [
+			{ id: 'RFID-1001', name: 'Nguyễn Thị Lan', room: 'A-203', age: 78, gender: 'Nữ' },
+			{ id: 'RFID-1002', name: 'Trần Văn Minh', room: 'A-101', age: 81, gender: 'Nam' },
+			{ id: 'RFID-1003', name: 'Phạm Thị Hạnh', room: 'B-205', age: 74, gender: 'Nữ' },
+			{ id: 'RFID-1004', name: 'Lê Quốc Huy', room: 'B-112', age: 69, gender: 'Nam' },
+			{ id: 'RFID-1005', name: 'Võ Thị Mai', room: 'C-301', age: 83, gender: 'Nữ' },
+			{ id: 'RFID-1006', name: 'Đặng Văn Sơn', room: 'C-120', age: 76, gender: 'Nam' },
+			{ id: 'RFID-1007', name: 'Bùi Thị Phương', room: 'D-011', age: 71, gender: 'Nữ' },
+			{ id: 'RFID-1008', name: 'Hoàng Văn Phúc', room: 'D-210', age: 79, gender: 'Nam' },
+			{ id: 'RFID-1009', name: 'Ngô Thị Thu', room: 'E-018', age: 67, gender: 'Nữ' },
+			{ id: 'RFID-1010', name: 'Phan Văn Long', room: 'E-220', age: 85, gender: 'Nam' },
+			{ id: 'RFID-1011', name: 'Dương Thị Yến', room: 'F-107', age: 73, gender: 'Nữ' },
+			{ id: 'RFID-1012', name: 'Tạ Văn Khải', room: 'F-306', age: 77, gender: 'Nam' },
+			{ id: 'RFID-1013', name: 'Mai Thị Ngọc', room: 'G-012', age: 68, gender: 'Nữ' },
+			{ id: 'RFID-1014', name: 'Hồ Văn An', room: 'G-245', age: 82, gender: 'Nam' },
+			{ id: 'RFID-1015', name: 'Lý Thị Thanh', room: 'H-055', age: 75, gender: 'Nữ' },
+			{ id: 'RFID-1016', name: 'Nguyễn Văn Tâm', room: 'H-240', age: 86, gender: 'Nam' },
+		];
+
+		function rand(min, max) {
+			return Math.random() * (max - min) + min;
+		}
+
+		function clamp(value, min, max) {
+			return Math.max(min, Math.min(max, value));
+		}
+
+		function formatTime(date) {
+			return new Intl.DateTimeFormat('vi-VN', {
+				hour: '2-digit',
+				minute: '2-digit',
+				second: '2-digit',
+			}).format(date);
+		}
+
+		function formatDateTime(date) {
+			return new Intl.DateTimeFormat('vi-VN', {
+				day: '2-digit',
+				month: '2-digit',
+				hour: '2-digit',
+				minute: '2-digit',
+			}).format(date);
+		}
+
+		function formatRelative(minutesAgo) {
+			if (minutesAgo < 1) return 'vừa xong';
+			if (minutesAgo < 60) return `${minutesAgo} phút trước`;
+			const hours = Math.floor(minutesAgo / 60);
+			return `${hours} giờ trước`;
+		}
+
+		function createHistorySeries(base, spread, points = 30, wiggle = 1.6) {
+			const series = [];
+			let value = base;
+			for (let index = 0; index < points; index += 1) {
+				value += rand(-wiggle, wiggle);
+				series.push(Number(clamp(value + rand(-spread, spread), base - spread * 1.5, base + spread * 1.5).toFixed(1)));
+			}
+			return series;
+		}
+
+		function buildMockPatients() {
+			const now = new Date();
+			return patientPool.map((profile, index) => {
+				const safe = Math.random() > 0.2;
+				const heartRate = Math.round(rand(62, 96));
+				const spo2 = Math.round(rand(94, 99));
+				const temp = Number(rand(36.2, 37.8).toFixed(1));
+				const battery = Math.round(rand(18, 100));
+				const rssi = Math.round(rand(-84, -46));
+				const riskScore = Math.round(rand(18, 92));
+				const fall = Math.random() < 0.09;
+				const signalLost = Math.random() < 0.05;
+				const alert = fall || signalLost || !safe || spo2 < 94 || heartRate > 110 || heartRate < 55;
+				const status = fall || signalLost ? 'danger' : safe ? 'safe' : 'warning';
+				return {
+					...profile,
+					index,
+					avatar: profile.name.split(' ').slice(-2).map((part) => part[0]).join(''),
+					heartRate,
+					spo2,
+					temp,
+					safe,
+					battery,
+					rssi,
+					ble: signalLost ? 'Mất tín hiệu' : 'Ổn định',
+					kiosk: `Kiosk ${String(1 + (index % 5)).padStart(2, '0')}`,
+					zone: safe ? 'Within zone' : 'Alert zone',
+					alert,
+					fall,
+					status,
+					signalLost,
+					lastUpdate: new Date(now.getTime() - Math.round(rand(0, 9)) * 60_000),
+					history: {
+						heartRate: createHistorySeries(heartRate, 12),
+						spo2: createHistorySeries(spo2, 2.5),
+						temp: createHistorySeries(temp, 0.5),
+					},
+					checkins: [
+						{ type: 'Check-in', time: new Date(now.getTime() - rand(90, 540) * 60_000), place: profile.room },
+						{ type: 'Medication', time: new Date(now.getTime() - rand(30, 240) * 60_000), place: 'Nurse station' },
+						{ type: 'Check-out', time: new Date(now.getTime() - rand(10, 60) * 60_000), place: profile.room },
+					],
+					timeline: [
+						{ label: 'Theo dõi vitals', time: new Date(now.getTime() - rand(8, 25) * 60_000), note: 'Sensor hoạt động bình thường' },
+						{ label: alert ? 'Cảnh báo' : 'Đánh giá', time: new Date(now.getTime() - rand(2, 12) * 60_000), note: alert ? 'Yêu cầu y tá kiểm tra' : 'Không ghi nhận bất thường' },
+						{ label: 'Cập nhật', time: new Date(now.getTime() - rand(0, 3) * 60_000), note: 'Dữ liệu đồng bộ về dashboard' },
+					],
+					riskScore,
+				};
+			});
+		}
+
+		let patients = buildMockPatients();
+		state.selectedPatientId = patients[0].id;
+
+		function updateVitals() {
+			patients = patients.map((patient, index) => {
+				const drift = index % 3 === 0 ? rand(-4, 5) : rand(-2.5, 2.5);
+				const heartRate = Math.round(clamp(patient.heartRate + drift, 48, 146));
+				const spo2 = Math.round(clamp(patient.spo2 + rand(-1, 1), 87, 100));
+				const temp = Number(clamp(patient.temp + rand(-0.2, 0.2), 35.8, 38.7).toFixed(1));
+				const battery = Math.round(clamp(patient.battery - rand(0, 0.8), 5, 100));
+				const safe = Math.random() > 0.16;
+				const signalLost = Math.random() < 0.03 ? !patient.signalLost : patient.signalLost && Math.random() < 0.6;
+				const fall = Math.random() < 0.03 ? true : patient.fall && Math.random() < 0.82;
+				const alert = fall || signalLost || !safe || spo2 < 94 || heartRate > 112 || heartRate < 54 || temp > 37.8;
+				const status = fall || signalLost ? 'danger' : safe ? 'safe' : 'warning';
+				const riskScore = clamp(Math.round((100 - spo2) * 1.2 + Math.abs(heartRate - 78) * 1.1 + Math.max(temp - 37.3, 0) * 18 + (safe ? 0 : 12) + (signalLost ? 24 : 0) + (fall ? 40 : 0)), 4, 99);
+				const updatedHistory = {
+					heartRate: [...patient.history.heartRate.slice(1), heartRate],
+					spo2: [...patient.history.spo2.slice(1), spo2],
+					temp: [...patient.history.temp.slice(1), temp],
+				};
+				return {
+					...patient,
+					heartRate,
+					spo2,
+					temp,
+					battery,
+					safe,
+					signalLost,
+					fall,
+					alert,
+					status,
+					zone: safe ? 'Within zone' : 'Alert zone',
+					ble: signalLost ? 'Mất tín hiệu' : battery < 20 ? 'Pin yếu' : 'Ổn định',
+					rssi: Math.round(clamp(patient.rssi + rand(-2, 2), -90, -38)),
+					lastUpdate: new Date(),
+					history: updatedHistory,
+					riskScore,
+					timeline: [
+						...patient.timeline.slice(0, 2),
+						{ label: 'Dữ liệu đồng bộ', time: new Date(), note: 'Update realtime từ thiết bị đeo' },
+					],
+				};
+			});
+
+			state.mqttStatus = Math.random() > 0.06 ? 'connected' : 'degraded';
+			state.wifiStatus = Math.random() > 0.04 ? 'stable' : 'unstable';
+			state.kioskStatus = Math.random() > 0.05 ? 'online' : 'warning';
+
+			const criticalPatients = patients.filter((patient) => patient.fall || patient.signalLost || patient.spo2 < 92 || patient.heartRate > 125);
+			if (criticalPatients.length && state.soundEnabled) {
+				enqueueAlert(criticalPatients[0], 'critical', { showModal: false, cooldownMs: 45000 });
+			}
+			render();
+		}
+
+		function enqueueAlert(patient, type, options = {}) {
+			const { showModal = true, cooldownMs = 0 } = options;
+			const now = Date.now();
+			const lastAlertAt = state.alertHistory[patient.id] || 0;
+			if (cooldownMs && now - lastAlertAt < cooldownMs) {
+				return;
+			}
+			state.alertHistory = {
+				...state.alertHistory,
+				[patient.id]: now,
+			};
+			const alert = {
+				id: `${now}-${Math.random().toString(16).slice(2)}`,
+				type,
+				patient,
+				time: new Date(),
+				kiosk: patient.kiosk,
+			};
+			if (showModal && (!state.alertModal || state.alertModal.patient.id !== patient.id)) {
+				state.alertModal = alert;
+			}
+			state.toastQueue.unshift({
+				id: alert.id,
+				title: type === 'critical' ? 'Cảnh báo khẩn cấp' : 'Cập nhật trạng thái',
+				message: `${patient.name} tại ${patient.kiosk}`,
+				tone: type === 'critical' ? 'danger' : 'info',
+			});
+			state.toastQueue = state.toastQueue.slice(0, 3);
+			playAlarmTone();
+			render();
+			setTimeout(() => {
+				if (state.alertModal && state.alertModal.id === alert.id) state.alertModal = null;
+				render();
+			}, 5200);
+		}
+
+		function playAlarmTone() {
+			if (!state.soundEnabled) return;
+			try {
+				const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+				if (!AudioContextClass) return;
+				const context = new AudioContextClass();
+				const oscillator = context.createOscillator();
+				const gain = context.createGain();
+				oscillator.type = 'sine';
+				oscillator.frequency.setValueAtTime(880, context.currentTime);
+				oscillator.frequency.exponentialRampToValueAtTime(520, context.currentTime + 0.18);
+				gain.gain.setValueAtTime(0.0001, context.currentTime);
+				gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.05);
+				gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.5);
+				oscillator.connect(gain);
+				gain.connect(context.destination);
+				oscillator.start();
+				oscillator.stop(context.currentTime + 0.52);
+			} catch (error) {
+			}
+		}
+
+		function getVisiblePatients() {
+			let items = [...patients];
+			if (state.search.trim()) {
+				const keyword = state.search.trim().toLowerCase();
+				items = items.filter((patient) =>
+					[patient.name, patient.id, patient.room, patient.kiosk].join(' ').toLowerCase().includes(keyword)
+				);
+			}
+			if (state.filter !== 'all') {
+				items = items.filter((patient) => patient.status === state.filter);
+			}
+			if (state.sort === 'name') {
+				items.sort((left, right) => left.name.localeCompare(right.name, 'vi'));
+			} else if (state.sort === 'heartRate') {
+				items.sort((left, right) => right.heartRate - left.heartRate);
+			} else if (state.sort === 'risk') {
+				items.sort((left, right) => right.riskScore - left.riskScore);
+			} else if (state.sort === 'updated') {
+				items.sort((left, right) => right.lastUpdate - left.lastUpdate);
+			}
+			return items;
+		}
+
+		function currentPatient() {
+			return patients.find((patient) => patient.id === state.selectedPatientId) || patients[0];
+		}
+
+		function linePath(series, width, height, padding = 16) {
+			const min = Math.min(...series);
+			const max = Math.max(...series);
+			const span = max - min || 1;
+			const innerWidth = width - padding * 2;
+			const innerHeight = height - padding * 2;
+			return series.map((value, index) => {
+				const x = padding + (index / (series.length - 1)) * innerWidth;
+				const y = padding + (1 - (value - min) / span) * innerHeight;
+				return [Number(x.toFixed(1)), Number(y.toFixed(1))];
+			});
+		}
+
+		function chartCard(title, series, unit, accent, extra = '') {
+			const width = 760;
+			const height = 240;
+			const points = linePath(series, width, height, 24);
+			const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point[0]} ${point[1]}`).join(' ');
+			const fill = `${path} L ${width - 24} ${height - 24} L 24 ${height - 24} Z`;
+			const min = Math.min(...series);
+			const max = Math.max(...series);
+			return `
+				<div class="card rounded-[28px] p-5 md:p-6 shadow-soft animate-slideIn">
+					<div class="flex items-start justify-between gap-4 mb-4">
+						<div>
+							<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${title}</div>
+							<div class="mt-1 text-2xl font-extrabold tracking-tight">${series[series.length - 1]}<span class="ml-1 text-sm font-semibold text-slate-500">${unit}</span></div>
+						</div>
+						<div class="text-right">
+							<div class="text-xs uppercase tracking-[0.24em] text-slate-400">Độ biến thiên</div>
+							<div class="mt-1 text-sm font-semibold ${accent}">${extra || `${min} - ${max} ${unit}`}</div>
+						</div>
+					</div>
+					<svg viewBox="0 0 ${width} ${height}" class="w-full h-56 rounded-[24px] bg-gradient-to-b from-slate-50/80 to-white dark:from-slate-900/70 dark:to-slate-950 overflow-hidden">
+						<defs>
+							<linearGradient id="${title.replace(/\s+/g, '-')}-line" x1="0" x2="1" y1="0" y2="0">
+								<stop offset="0%" stop-color="${accent.includes('emerald') ? '#20b46d' : accent.includes('red') ? '#ef4444' : '#2196ff'}" />
+								<stop offset="100%" stop-color="${accent.includes('emerald') ? '#86efac' : accent.includes('red') ? '#f97316' : '#67e8f9'}" />
+							</linearGradient>
+							<linearGradient id="${title.replace(/\s+/g, '-')}-fill" x1="0" x2="0" y1="0" y2="1">
+								<stop offset="0%" stop-color="${accent.includes('emerald') ? 'rgba(32,180,109,0.26)' : accent.includes('red') ? 'rgba(239,68,68,0.24)' : 'rgba(33,150,255,0.22)'}" />
+								<stop offset="100%" stop-color="rgba(33,150,255,0.02)" />
+							</linearGradient>
+						</defs>
+						<g opacity="0.52">
+							${Array.from({ length: 5 }).map((_, index) => `<line x1="24" y1="${24 + index * 42}" x2="736" y2="${24 + index * 42}" stroke="rgba(148,163,184,0.12)" />`).join('')}
+						</g>
+						<path d="${fill}" fill="url(#${title.replace(/\s+/g, '-')}-fill)" />
+						<path d="${path}" fill="none" stroke="url(#${title.replace(/\s+/g, '-')}-line)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+						${points.map((point) => `<circle cx="${point[0]}" cy="${point[1]}" r="4.5" fill="#fff" stroke="url(#${title.replace(/\s+/g, '-')}-line)" stroke-width="3" />`).join('')}
+					</svg>
+				</div>
+			`;
+		}
+
+		function progressBar(value, max, tone = 'brand') {
+			const pct = Math.round((value / max) * 100);
+			const toneClass = tone === 'danger'
+				? 'from-red-500 to-orange-500'
+				: tone === 'warning'
+					? 'from-amber-400 to-yellow-400'
+					: tone === 'mint'
+						? 'from-emerald-400 to-green-500'
+						: 'from-brand-400 to-cyan-400';
+			return `
+				<div class="h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+					<div class="h-full rounded-full bg-gradient-to-r ${toneClass}" style="width:${pct}%"></div>
+				</div>
+			`;
+		}
+
+		function statusBadge(value) {
+			const map = {
+				safe: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20',
+				warning: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20',
+				danger: 'bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20',
+			};
+			const text = {
+				safe: 'An toàn',
+				warning: 'Cảnh báo',
+				danger: 'Nguy hiểm',
+			};
+			return `<span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${map[value]}"><span class="h-1.5 w-1.5 rounded-full bg-current"></span>${text[value]}</span>`;
+		}
+
+		function iconCircle(name, tone = 'brand') {
+			const theme = {
+				brand: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
+				mint: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
+				amber: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
+				red: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300',
+				slate: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+			};
+			return `<span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl ${theme[tone] || theme.brand}"><i data-lucide="${name}" class="h-5 w-5"></i></span>`;
+		}
+
+		function renderLanding() {
+			return `
+				<div class="relative min-h-screen overflow-hidden">
+					<div class="absolute inset-0 soft-grid opacity-[0.14]"></div>
+					<div class="noise"></div>
+					<div class="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-between px-4 py-5 sm:px-6 lg:px-8">
+						<header class="glass rounded-[28px] px-5 py-4 shadow-soft">
+							<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+								<div class="flex items-center gap-3">
+									<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-400 text-white shadow-glow">
+										<i data-lucide="activity" class="h-6 w-6"></i>
+									</div>
+									<div>
+										<div class="text-lg font-extrabold tracking-tight">MedPulse IoT</div>
+										<div class="text-sm text-slate-500 dark:text-slate-400">Nền tảng giám sát bệnh nhân realtime cho bệnh viện và viện dưỡng lão</div>
+									</div>
+								</div>
+								<div class="flex flex-wrap items-center gap-3">
+									<button data-action="toggle-theme" class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+										<i data-lucide="moon-star" class="h-4 w-4"></i><span>Dark mode</span>
+									</button>
+									<button data-action="show-login" class="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-950">
+										<i data-lucide="log-in" class="h-4 w-4"></i><span>Đăng nhập demo</span>
+									</button>
+								</div>
+							</div>
+						</header>
+
+						<main class="grid flex-1 gap-6 py-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+							<section class="space-y-8 animate-slideIn">
+								<div class="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white/80 px-4 py-2 text-sm font-semibold text-brand-700 shadow-sm backdrop-blur dark:border-brand-500/20 dark:bg-slate-900/70 dark:text-brand-300">
+									<span class="h-2 w-2 rounded-full bg-mint-500 animate-pulse"></span>
+									Realtime monitoring, alerts, analytics, kiosk visibility
+								</div>
+								<div class="max-w-3xl space-y-5">
+									<h1 class="text-4xl font-black tracking-tight text-slate-900 sm:text-5xl lg:text-6xl dark:text-white">
+										Dashboard y tế IoT hiện đại để y tá nhìn nhanh, bác sĩ ra quyết định ngay.
+									</h1>
+									<p class="max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-300">
+										Giao diện được thiết kế như một sản phẩm health-tech thực chiến: số liệu sống, cảnh báo nổi bật, timeline lâm sàng, bản đồ khu vực và phân tích AI hỗ trợ trực quan.
+									</p>
+								</div>
+								<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+									${[
+										{ title: 'Bệnh nhân realtime', value: '16', desc: '10-20 patient mock data', tone: 'brand' },
+										{ title: 'Cảnh báo khẩn', value: '3', desc: 'Fall / SpO₂ / signal', tone: 'red' },
+										{ title: 'MQTT latency', value: '120ms', desc: 'Stable channel', tone: 'mint' },
+										{ title: 'Kiosk online', value: '98.4%', desc: 'Nurse stations healthy', tone: 'amber' },
+									].map((item) => `
+										<div class="card rounded-[28px] p-5 shadow-soft transition duration-300 hover:-translate-y-1">
+											<div class="flex items-start justify-between gap-3">
+												<div>
+													<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${item.title}</div>
+													<div class="mt-2 text-3xl font-black tracking-tight">${item.value}</div>
+													<div class="mt-2 text-sm text-slate-500 dark:text-slate-400">${item.desc}</div>
+												</div>
+												${iconCircle(item.tone === 'red' ? 'shield-alert' : item.tone === 'mint' ? 'wifi' : item.tone === 'amber' ? 'square-stack' : 'users-round', item.tone)}
+											</div>
+										</div>
+									`).join('')}
+								</div>
+								<div class="flex flex-wrap items-center gap-3">
+									<button data-action="show-login" class="rounded-2xl bg-gradient-to-r from-brand-500 to-cyan-400 px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:-translate-y-0.5">
+										Trải nghiệm dashboard
+									</button>
+									<button data-action="switch-view" data-view="ai" class="rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+										Xem AI Analysis
+									</button>
+								</div>
+							</section>
+
+							<section class="relative">
+								<div class="absolute -left-12 top-4 h-56 w-56 rounded-full bg-brand-300/20 blur-3xl"></div>
+								<div class="absolute right-4 top-40 h-40 w-40 rounded-full bg-emerald-300/20 blur-3xl"></div>
+								<div class="card relative overflow-hidden rounded-[34px] p-6 shadow-soft animate-floaty">
+									<div class="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent dark:from-white/5"></div>
+									<div class="relative">
+										<div class="flex items-center justify-between">
+											<div>
+												<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Executive preview</div>
+												<div class="mt-1 text-2xl font-black tracking-tight">Unit dashboard snapshot</div>
+											</div>
+											<div class="rounded-full bg-mint-50 px-3 py-1.5 text-xs font-bold text-mint-700 dark:bg-emerald-500/10 dark:text-emerald-300">Live</div>
+										</div>
+										<div class="mt-6 grid gap-4 sm:grid-cols-2">
+											<div class="rounded-[26px] bg-slate-950 p-5 text-white shadow-soft dark:bg-slate-900">
+												<div class="flex items-center justify-between">
+													<div>
+														<div class="text-sm text-slate-300">Patients monitored</div>
+														<div class="mt-2 text-4xl font-black">16</div>
+													</div>
+													<i data-lucide="heart-pulse" class="h-8 w-8 text-cyan-300"></i>
+												</div>
+												<div class="mt-5 rounded-2xl bg-white/10 p-3">
+													<div class="flex items-center justify-between text-xs text-slate-300"><span>Realtime risk index</span><span>72/100</span></div>
+													<div class="mt-2 h-2 rounded-full bg-white/10"><div class="h-2 w-[72%] rounded-full bg-gradient-to-r from-brand-400 to-mint-400"></div></div>
+												</div>
+											</div>
+											<div class="rounded-[26px] border border-slate-200 bg-white/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/60">
+												<div class="flex items-center justify-between">
+													<div>
+														<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Operational mode</div>
+														<div class="mt-2 text-2xl font-black">Nurse-ready</div>
+													</div>
+													<div class="rounded-2xl bg-brand-50 p-3 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i data-lucide="badge-alert" class="h-6 w-6"></i></div>
+												</div>
+												<div class="mt-5 space-y-3 text-sm text-slate-600 dark:text-slate-300">
+													<div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-emerald-500"></span> MQTT connected</div>
+													<div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-sky-500"></span> Wi-Fi stable</div>
+													<div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-amber-500"></span> 2 devices need attention</div>
+												</div>
+											</div>
+										</div>
+										<div class="mt-4 rounded-[28px] border border-slate-200 bg-gradient-to-r from-brand-50 via-cyan-50 to-emerald-50 p-5 dark:border-slate-800 dark:from-brand-500/10 dark:via-cyan-500/10 dark:to-emerald-500/10">
+											<div class="flex items-center justify-between">
+												<div>
+													<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Realtime alerts</div>
+													<div class="mt-1 text-lg font-bold">Fall detection + low SpO₂ highlight</div>
+												</div>
+												<div class="flex -space-x-2">
+													<div class="h-10 w-10 rounded-full bg-white ring-2 ring-white dark:ring-slate-950"></div>
+													<div class="h-10 w-10 rounded-full bg-brand-300 ring-2 ring-white dark:ring-slate-950"></div>
+													<div class="h-10 w-10 rounded-full bg-emerald-300 ring-2 ring-white dark:ring-slate-950"></div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</section>
+						</main>
+
+						<footer class="pb-2 text-center text-sm text-slate-500 dark:text-slate-400">
+							Thiết kế tối ưu cho bệnh viện, viện dưỡng lão, y tá lớn tuổi và hoạt động realtime 24/7.
+						</footer>
+					</div>
+				</div>
+			`;
+		}
+
+		function renderLogin() {
+			return `
+				<div class="relative min-h-screen overflow-hidden">
+					<div class="absolute inset-0 soft-grid opacity-[0.12]"></div>
+					<div class="noise"></div>
+					<div class="relative mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
+						<div class="grid w-full gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+							<section class="card relative overflow-hidden rounded-[34px] p-8 shadow-soft animate-slideIn">
+								<div class="absolute inset-0 bg-gradient-to-br from-brand-50 via-white to-emerald-50 dark:from-brand-500/10 dark:via-slate-950 dark:to-emerald-500/10"></div>
+								<div class="relative space-y-6">
+									<div class="flex items-center gap-3">
+										<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-400 text-white shadow-glow">
+											<i data-lucide="shield-plus" class="h-6 w-6"></i>
+										</div>
+										<div>
+											<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Secure access</div>
+											<div class="text-2xl font-black tracking-tight">MedPulse Access</div>
+										</div>
+									</div>
+									<div>
+										<h2 class="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Đăng nhập vào trung tâm giám sát realtime</h2>
+										<p class="mt-3 max-w-xl text-base leading-7 text-slate-600 dark:text-slate-300">Mô phỏng giao diện login hiện đại cho y tá và bác sĩ, có thể dùng làm cổng demo hoặc bắt đầu để tích hợp auth thật.</p>
+									</div>
+									<div class="grid gap-4 sm:grid-cols-3">
+										<div class="rounded-[24px] bg-white/85 p-4 shadow-sm dark:bg-slate-950/60">
+											<div class="text-sm font-semibold text-slate-500">Privacy</div>
+											<div class="mt-2 text-lg font-bold">Role-based</div>
+										</div>
+										<div class="rounded-[24px] bg-white/85 p-4 shadow-sm dark:bg-slate-950/60">
+											<div class="text-sm font-semibold text-slate-500">Realtime</div>
+											<div class="mt-2 text-lg font-bold">MQTT / WS</div>
+										</div>
+										<div class="rounded-[24px] bg-white/85 p-4 shadow-sm dark:bg-slate-950/60">
+											<div class="text-sm font-semibold text-slate-500">Reports</div>
+											<div class="mt-2 text-lg font-bold">PDF export</div>
+										</div>
+									</div>
+									<div class="rounded-[28px] border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950/70">
+										<div class="flex items-center justify-between text-sm font-semibold text-slate-500 dark:text-slate-400">
+											<span>Trusted by</span><span class="rounded-full bg-mint-50 px-3 py-1 text-mint-700 dark:bg-emerald-500/10 dark:text-emerald-300">Nursing teams</span>
+										</div>
+										<div class="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">Hộp đăng nhập demo này có thể thay bằng SSO, Azure AD hoặc tài khoản nội bộ. Giao diện được giữ đơn giản, rõ ràng, phù hợp môi trường y tế.</div>
+									</div>
+								</div>
+							</section>
+
+							<section class="card rounded-[34px] p-6 shadow-soft animate-slideIn">
+								<div class="flex items-center justify-between">
+									<div>
+										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Demo login</div>
+										<div class="mt-1 text-2xl font-black tracking-tight">Sign in to dashboard</div>
+									</div>
+									<button data-action="show-landing" class="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-900">Landing</button>
+								</div>
+								<div class="mt-6 space-y-5">
+									<label class="block">
+										<span class="mb-2 block text-sm font-semibold text-slate-600 dark:text-slate-300">Tên người dùng</span>
+										<input data-bind="inputName" value="${escapeHtml(state.inputName || 'nurse.le') }" placeholder="nurse.le" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15" />
+									</label>
+									<label class="block">
+										<span class="mb-2 block text-sm font-semibold text-slate-600 dark:text-slate-300">Mã PIN</span>
+										<input data-bind="loginPin" value="${escapeHtml(state.loginPin)}" type="password" placeholder="••••••" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15" />
+									</label>
+									<div class="grid gap-3 sm:grid-cols-2">
+										<button data-action="demo-login" class="rounded-2xl bg-gradient-to-r from-brand-500 to-cyan-400 px-5 py-3.5 text-sm font-bold text-white shadow-glow transition hover:-translate-y-0.5">Vào dashboard</button>
+										<button data-action="fill-demo" class="rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-bold text-slate-700 transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Điền demo</button>
+									</div>
+									<div class="rounded-[26px] border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-300">
+										Demo credentials: <span class="font-bold text-slate-900 dark:text-white">nurse.le</span> / <span class="font-bold text-slate-900 dark:text-white">demo123</span>
+									</div>
+								</div>
+							</section>
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function renderSidebar() {
+			const nav = [
+				['dashboard', 'Tổng quan', 'layout-dashboard'],
+				['patients', 'Bệnh nhân', 'users'],
+				['detail', 'Chi tiết bệnh nhân', 'stethoscope'],
+				['map', 'Bản đồ khu vực', 'map-pinned'],
+				['ai', 'AI Analysis', 'brain-circuit'],
+				['history', 'Lịch sử dữ liệu', 'calendar-clock'],
+				['settings', 'Thiết lập', 'settings-2'],
+			];
+			return `
+				<aside class="${state.sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} fixed inset-y-0 left-0 z-40 flex w-[290px] flex-col border-r border-slate-200/70 bg-[rgb(var(--panel))]/95 shadow-soft backdrop-blur-xl transition-transform duration-300 dark:border-slate-800/70 lg:static lg:z-auto">
+					<div class="flex items-center justify-between gap-3 border-b border-slate-200/70 px-5 py-5 dark:border-slate-800/70">
+						<div class="flex items-center gap-3">
+							<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-400 text-white shadow-glow"><i data-lucide="activity" class="h-6 w-6"></i></div>
+							<div>
+								<div class="text-lg font-extrabold tracking-tight">MedPulse</div>
+								<div class="text-xs font-medium uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Health-tech</div>
+							</div>
+						</div>
+						<button data-action="toggle-sidebar" class="rounded-2xl p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-900 lg:hidden"><i data-lucide="panel-left-close" class="h-5 w-5"></i></button>
+					</div>
+					<div class="flex-1 overflow-y-auto px-4 py-5 hide-scrollbar">
+						<div class="rounded-[26px] bg-gradient-to-br from-slate-950 to-slate-800 p-5 text-white shadow-soft dark:from-slate-900 dark:to-slate-950">
+							<div class="flex items-center justify-between">
+								<div>
+									<div class="text-xs uppercase tracking-[0.24em] text-slate-400">Realtime</div>
+									<div class="mt-2 text-2xl font-black">${patients.filter((patient) => patient.status === 'safe').length}/${patients.length}</div>
+								</div>
+								<div class="rounded-2xl bg-white/10 p-3"><i data-lucide="radiation" class="h-6 w-6 text-cyan-300"></i></div>
+							</div>
+							<div class="mt-4 text-sm leading-6 text-slate-300">Kiosk ${state.kioskStatus} · MQTT ${state.mqttStatus} · Wi-Fi ${state.wifiStatus}</div>
+						</div>
+						<nav class="mt-5 space-y-1.5">
+							${nav.map(([key, label, icon]) => `
+								<button data-action="switch-view" data-view="${key}" class="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition ${state.view === key ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900/70'}">
+									<span class="flex h-10 w-10 items-center justify-center rounded-2xl ${state.view === key ? 'bg-white shadow-sm dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-900'}"><i data-lucide="${icon}" class="h-5 w-5"></i></span>
+									<span class="font-semibold">${label}</span>
+								</button>
+							`).join('')}
+						</nav>
+
+						<div class="mt-6 rounded-[28px] border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60">
+							<div class="flex items-center justify-between">
+								<div>
+									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Notification center</div>
+									<div class="mt-1 text-lg font-bold">${state.toastQueue.length} mới</div>
+								</div>
+								<button data-action="toggle-notifications" class="rounded-2xl bg-white p-2.5 text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-200"><i data-lucide="bell" class="h-5 w-5"></i></button>
+							</div>
+							<div class="mt-4 space-y-3">
+								${state.toastQueue.slice(0, 2).map((toast) => `
+									<div class="rounded-2xl ${toast.tone === 'danger' ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-200' : 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-200'} px-3 py-3 text-sm font-semibold">
+										${toast.message}
+									</div>
+								`).join('') || '<div class="rounded-2xl bg-white px-3 py-3 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">Không có cảnh báo mới</div>'}
+							</div>
+						</div>
+					</div>
+				</aside>
+			`;
+		}
+
+		function metricCard(title, value, delta, icon, tone, note) {
+			const toneClass = {
+				brand: 'from-brand-500 to-cyan-400',
+				mint: 'from-emerald-400 to-green-500',
+				amber: 'from-amber-400 to-orange-400',
+				red: 'from-red-500 to-rose-500',
+			}[tone] || 'from-brand-500 to-cyan-400';
+			return `
+				<div class="card rounded-[28px] p-5 shadow-soft transition duration-300 hover:-translate-y-1">
+					<div class="flex items-start justify-between gap-4">
+						<div>
+							<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${title}</div>
+							<div class="mt-2 text-3xl font-black tracking-tight">${value}</div>
+							<div class="mt-2 text-sm font-semibold ${delta.startsWith('+') ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}">${delta}</div>
+							<div class="mt-2 text-xs text-slate-400 dark:text-slate-500">${note}</div>
+						</div>
+						<div class="rounded-[22px] bg-gradient-to-br ${toneClass} p-3 text-white shadow-soft">
+							<i data-lucide="${icon}" class="h-6 w-6"></i>
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function statChip(label, value, tone) {
+			const tones = {
+				green: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20',
+				amber: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20',
+				red: 'bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20',
+				blue: 'bg-brand-50 text-brand-700 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:text-brand-300 dark:ring-brand-500/20',
+			};
+			return `<div class="rounded-2xl px-3 py-2 text-sm font-semibold ${tones[tone] || tones.blue}"><span class="text-xs uppercase tracking-[0.16em] opacity-70">${label}</span><div class="mt-1 text-base font-black">${value}</div></div>`;
+		}
+
+		function renderOverview() {
+			const safeCount = patients.filter((patient) => patient.status === 'safe').length;
+			const warningCount = patients.filter((patient) => patient.status === 'warning').length;
+			const dangerCount = patients.filter((patient) => patient.status === 'danger').length;
+			const fallCount = patients.filter((patient) => patient.fall).length;
+			const avgHeart = Math.round(patients.reduce((sum, patient) => sum + patient.heartRate, 0) / patients.length);
+			const avgTemp = (patients.reduce((sum, patient) => sum + patient.temp, 0) / patients.length).toFixed(1);
+			const avgSpO2 = Math.round(patients.reduce((sum, patient) => sum + patient.spo2, 0) / patients.length);
+			const heartSeries = Array.from({ length: 18 }, (_, index) => Math.round(avgHeart + Math.sin((index / 17) * Math.PI * 2) * 7 + rand(-3, 3)));
+			const tempSeries = Array.from({ length: 18 }, (_, index) => Number((Number(avgTemp) + Math.sin((index / 17) * Math.PI * 2) * 0.18 + rand(-0.08, 0.08)).toFixed(1)));
+			const alertPatients = patients.filter((patient) => patient.status !== 'safe').slice(0, 4);
+			const criticalItems = [
+				{ label: 'MQTT', value: state.mqttStatus === 'connected' ? 'Connected' : 'Degraded', tone: state.mqttStatus === 'connected' ? 'green' : 'amber' },
+				{ label: 'Wi-Fi', value: state.wifiStatus === 'stable' ? 'Stable' : 'Unstable', tone: state.wifiStatus === 'stable' ? 'green' : 'amber' },
+				{ label: 'Kiosk', value: state.kioskStatus === 'online' ? 'Online' : 'Warning', tone: state.kioskStatus === 'online' ? 'green' : 'amber' },
+				{ label: 'BLE', value: `${patients.filter((patient) => patient.signalLost).length} issue(s)`, tone: patients.some((patient) => patient.signalLost) ? 'red' : 'blue' },
+			];
+
+			return `
+				<div class="space-y-6 animate-slideIn">
+					<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+						${metricCard('Tổng bệnh nhân', patients.length, '+ realtime', 'users-round', 'brand', 'Đang theo dõi trực tiếp')}
+						${metricCard('Bệnh nhân an toàn', safeCount, `${safeCount >= 12 ? '+' : ''}${safeCount - 12}`, 'shield-check', 'mint', 'Vùng an toàn / vitals ổn')}
+						${metricCard('Cảnh báo đang hoạt động', warningCount + dangerCount, dangerCount ? `${dangerCount} nguy hiểm` : 'Giám sát', 'triangle-alert', dangerCount ? 'red' : 'amber', 'Té ngã, SpO₂ thấp, mất tín hiệu')}
+						${metricCard('Té ngã hôm nay', fallCount, `${fallCount > 0 ? '+' : ''}${fallCount}`, 'person-standing', fallCount > 0 ? 'red' : 'amber', 'Phát hiện từ wearable/kiosk')}
+					</section>
+
+					<section class="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
+						<div class="space-y-6">
+							<div class="grid gap-4 lg:grid-cols-2">
+								${chartCard('Nhịp tim trung bình', heartSeries, 'bpm', 'text-brand-600 dark:text-brand-300', `AVG ${avgHeart} bpm`)}
+								${chartCard('Nhiệt độ cơ thể', tempSeries, '°C', 'text-emerald-600 dark:text-emerald-300', `AVG ${avgTemp} °C`)}
+							</div>
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+									<div>
+										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Overview snapshots</div>
+										<div class="mt-1 text-2xl font-black tracking-tight">Realtime health status</div>
+									</div>
+									<div class="flex flex-wrap gap-2">
+										${statChip('SpO₂ average', `${avgSpO2}%`, avgSpO2 < 94 ? 'red' : 'green')}
+										${statChip('MQTT', state.mqttStatus, state.mqttStatus === 'connected' ? 'green' : 'amber')}
+										${statChip('Wi-Fi', state.wifiStatus, state.wifiStatus === 'stable' ? 'green' : 'amber')}
+									</div>
+								</div>
+								<div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+									${criticalItems.map((item) => `
+										<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+											<div class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">${item.label}</div>
+											<div class="mt-2 text-lg font-black ${item.tone === 'green' ? 'text-emerald-600 dark:text-emerald-300' : item.tone === 'red' ? 'text-red-600 dark:text-red-300' : 'text-slate-800 dark:text-slate-100'}">${item.value}</div>
+											<div class="mt-3">${progressBar(item.label === 'BLE' ? patients.filter((patient) => !patient.signalLost).length : item.tone === 'green' ? 92 : 58, 100, item.tone === 'green' ? 'mint' : item.tone === 'red' ? 'danger' : 'warning')}</div>
+										</div>
+									`).join('')}
+								</div>
+							</div>
+						</div>
+
+						<div class="space-y-6">
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="flex items-center justify-between">
+									<div>
+										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">System status</div>
+										<div class="mt-1 text-xl font-black">MQTT / Wi-Fi / Kiosk</div>
+									</div>
+									<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"><span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>Realtime</span>
+								</div>
+								<div class="mt-5 space-y-3">
+									${[
+										['MQTT Broker', state.mqttStatus, state.mqttStatus === 'connected' ? 96 : 61, state.mqttStatus === 'connected' ? 'mint' : 'amber'],
+										['Wi-Fi Core', state.wifiStatus, state.wifiStatus === 'stable' ? 94 : 58, state.wifiStatus === 'stable' ? 'mint' : 'amber'],
+										['Kiosk Fleet', state.kioskStatus, state.kioskStatus === 'online' ? 91 : 54, state.kioskStatus === 'online' ? 'mint' : 'amber'],
+									].map(([label, value, pct, tone]) => `
+										<div class="space-y-2 rounded-[20px] bg-slate-50 p-4 dark:bg-slate-950/50">
+											<div class="flex items-center justify-between text-sm font-semibold"><span>${label}</span><span class="capitalize ${tone === 'mint' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${value}</span></div>
+											${progressBar(Number(pct), 100, tone)}
+										</div>
+									`).join('')}
+								</div>
+							</div>
+
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="flex items-center justify-between">
+									<div>
+										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Danger pulse</div>
+										<div class="mt-1 text-xl font-black">Cảnh báo nổi bật</div>
+									</div>
+									<div class="rounded-full bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 dark:bg-red-500/10 dark:text-red-300">${alertPatients.length} active</div>
+								</div>
+								<div class="mt-4 space-y-3">
+									${alertPatients.length ? alertPatients.map((patient) => `
+										<button data-action="open-patient" data-id="${patient.id}" class="w-full rounded-[24px] border border-red-200 bg-red-50/80 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-soft dark:border-red-500/20 dark:bg-red-500/10">
+											<div class="flex items-center justify-between gap-3">
+												<div class="flex items-center gap-3">
+													<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-white">${patient.avatar}</div>
+													<div>
+														<div class="font-bold">${patient.name}</div>
+														<div class="text-sm text-slate-500 dark:text-slate-300">${patient.kiosk} · ${patient.room}</div>
+													</div>
+												</div>
+												<span class="rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white ${patient.fall || patient.signalLost ? 'pulse-critical' : ''}">${patient.fall ? 'FALL' : patient.signalLost ? 'LOST SIGNAL' : 'ALERT'}</span>
+											</div>
+											<div class="mt-4 grid grid-cols-3 gap-2 text-sm">
+												<div class="rounded-2xl bg-white/80 p-2 text-center dark:bg-slate-950/60"><div class="text-[11px] text-slate-400">HR</div><div class="font-black text-slate-900 dark:text-white">${patient.heartRate}</div></div>
+												<div class="rounded-2xl bg-white/80 p-2 text-center dark:bg-slate-950/60"><div class="text-[11px] text-slate-400">SpO₂</div><div class="font-black text-slate-900 dark:text-white">${patient.spo2}%</div></div>
+												<div class="rounded-2xl bg-white/80 p-2 text-center dark:bg-slate-950/60"><div class="text-[11px] text-slate-400">Temp</div><div class="font-black text-slate-900 dark:text-white">${patient.temp}°</div></div>
+											</div>
+										</button>
+									`).join('') : '<div class="rounded-[24px] bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-950/60 dark:text-slate-400">Không có cảnh báo nguy hiểm hiện tại</div>'}
+								</div>
+							</div>
+						</div>
+					</section>
+				</div>
+			`;
+		}
+
+		function renderPatients() {
+			const visible = getVisiblePatients();
+			const totalPages = Math.max(1, Math.ceil(visible.length / state.pageSize));
+			const page = Math.min(state.page, totalPages);
+			const pageItems = visible.slice((page - 1) * state.pageSize, page * state.pageSize);
+			const summary = {
+				all: patients.length,
+				safe: patients.filter((patient) => patient.status === 'safe').length,
+				warning: patients.filter((patient) => patient.status === 'warning').length,
+				danger: patients.filter((patient) => patient.status === 'danger').length,
+			};
+			return `
+				<div class="space-y-6 animate-slideIn">
+					<div class="card rounded-[30px] p-5 shadow-soft">
+						<div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+							<div>
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Danh sách bệnh nhân</div>
+								<div class="mt-1 text-2xl font-black tracking-tight">Quản lý theo dõi, tìm nhanh và lọc trạng thái</div>
+							</div>
+							<div class="flex flex-wrap items-center gap-3">
+								<button data-action="export-pdf" class="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white shadow-soft transition hover:-translate-y-0.5 dark:bg-white dark:text-slate-950">Export PDF report</button>
+								<button data-action="open-toast" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Toast demo</button>
+							</div>
+						</div>
+						<div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+							${statChip('Tổng', summary.all, 'blue')}
+							${statChip('An toàn', summary.safe, 'green')}
+							${statChip('Cảnh báo', summary.warning, 'amber')}
+							${statChip('Nguy hiểm', summary.danger, 'red')}
+						</div>
+					</div>
+
+					<div class="card rounded-[30px] p-4 shadow-soft">
+						<div class="grid gap-3 lg:grid-cols-[1.5fr_0.9fr_0.9fr_0.9fr]">
+							<label class="block">
+								<span class="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Search</span>
+								<input data-bind="search" value="${escapeHtml(state.search)}" placeholder="Tên, RFID, phòng, kiosk..." class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15" />
+							</label>
+							<label class="block">
+								<span class="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Filter</span>
+								<select data-bind="filter" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15">
+									<option value="all" ${state.filter === 'all' ? 'selected' : ''}>Tất cả</option>
+									<option value="safe" ${state.filter === 'safe' ? 'selected' : ''}>An toàn</option>
+									<option value="warning" ${state.filter === 'warning' ? 'selected' : ''}>Cảnh báo</option>
+									<option value="danger" ${state.filter === 'danger' ? 'selected' : ''}>Nguy hiểm</option>
+								</select>
+							</label>
+							<label class="block">
+								<span class="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Sort</span>
+								<select data-bind="sort" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15">
+									<option value="risk" ${state.sort === 'risk' ? 'selected' : ''}>Rủi ro cao</option>
+									<option value="heartRate" ${state.sort === 'heartRate' ? 'selected' : ''}>Nhịp tim</option>
+									<option value="name" ${state.sort === 'name' ? 'selected' : ''}>Tên</option>
+									<option value="updated" ${state.sort === 'updated' ? 'selected' : ''}>Cập nhật mới</option>
+								</select>
+							</label>
+							<label class="block">
+								<span class="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Rows</span>
+								<select data-bind="pageSize" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15">
+									<option value="5" ${state.pageSize === 5 ? 'selected' : ''}>5</option>
+									<option value="8" ${state.pageSize === 8 ? 'selected' : ''}>8</option>
+									<option value="12" ${state.pageSize === 12 ? 'selected' : ''}>12</option>
+								</select>
+							</label>
+						</div>
+					</div>
+
+					<div class="card overflow-hidden rounded-[30px] shadow-soft">
+						<div class="overflow-x-auto table-scroll">
+							<table class="min-w-full text-left">
+								<thead class="sticky top-0 z-10 bg-slate-50/90 text-xs uppercase tracking-[0.18em] text-slate-400 dark:bg-slate-950/80">
+									<tr>
+										${['Patient', 'RFID', 'HR', 'SpO₂', 'Temp', 'Zone', 'Battery', 'Fall', 'Updated'].map((head) => `<th class="px-5 py-4 font-bold">${head}</th>`).join('')}
+									</tr>
+								</thead>
+								<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+									${pageItems.map((patient) => `
+										<tr class="group transition hover:bg-slate-50/70 dark:hover:bg-slate-950/50">
+											<td class="px-5 py-4">
+												<button data-action="open-patient" data-id="${patient.id}" class="flex items-center gap-3 text-left">
+													<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-400 text-sm font-black text-white shadow-soft">${patient.avatar}</div>
+													<div>
+														<div class="font-bold">${patient.name}</div>
+														<div class="text-xs text-slate-500 dark:text-slate-400">${patient.room} · ${patient.age}y · ${patient.kiosk}</div>
+													</div>
+												</button>
+											</td>
+											<td class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">${patient.id}</td>
+											<td class="px-5 py-4"><span class="rounded-full ${patient.heartRate > 110 || patient.heartRate < 55 ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'} px-3 py-1 text-sm font-bold">${patient.heartRate}</span></td>
+											<td class="px-5 py-4"><span class="rounded-full ${patient.spo2 < 94 ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'} px-3 py-1 text-sm font-bold">${patient.spo2}%</span></td>
+											<td class="px-5 py-4 font-bold ${patient.temp > 37.6 ? 'text-red-600 dark:text-red-300' : 'text-slate-700 dark:text-slate-200'}">${patient.temp}°C</td>
+											<td class="px-5 py-4">${statusBadge(patient.status)}</td>
+											<td class="px-5 py-4">
+												<div class="w-24">${progressBar(patient.battery, 100, patient.battery < 20 ? 'danger' : patient.battery < 45 ? 'warning' : 'mint')}</div>
+												<div class="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">${patient.battery}%</div>
+											</td>
+											<td class="px-5 py-4">
+												<div class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ${patient.fall ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'}">
+													<span class="h-1.5 w-1.5 rounded-full bg-current"></span>${patient.fall ? 'FALL' : 'No'}
+												</div>
+											</td>
+											<td class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">${formatRelative((Date.now() - patient.lastUpdate.getTime()) / 60000)}</td>
+										</tr>
+									`).join('')}
+								</tbody>
+							</table>
+						</div>
+						<div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+							<div class="text-sm text-slate-500 dark:text-slate-400">Hiển thị ${Math.min((page - 1) * state.pageSize + 1, visible.length)}-${Math.min(page * state.pageSize, visible.length)} của ${visible.length} bệnh nhân</div>
+							<div class="flex items-center gap-2">
+								<button data-action="paginate" data-page="${Math.max(1, page - 1)}" class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200" ${page === 1 ? 'disabled' : ''}>Trước</button>
+								<div class="rounded-2xl bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-200">${page} / ${totalPages}</div>
+								<button data-action="paginate" data-page="${Math.min(totalPages, page + 1)}" class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200" ${page === totalPages ? 'disabled' : ''}>Sau</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function renderPatientDetail() {
+			const patient = currentPatient();
+			if (!patient) return `<div class="card rounded-[30px] p-6 shadow-soft">Không có bệnh nhân được chọn.</div>`;
+			const heartSeries = patient.history.heartRate;
+			const spo2Series = patient.history.spo2;
+			const tempSeries = patient.history.temp;
+			return `
+				<div class="space-y-6 animate-slideIn">
+					<div class="card rounded-[30px] p-5 shadow-soft">
+						<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+							<div class="flex items-center gap-4">
+								<div class="flex h-16 w-16 items-center justify-center rounded-[26px] bg-gradient-to-br from-brand-500 to-cyan-400 text-xl font-black text-white shadow-glow">${patient.avatar}</div>
+								<div>
+									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Trang chi tiết bệnh nhân</div>
+									<div class="mt-1 text-3xl font-black tracking-tight">${patient.name}</div>
+									<div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+										<span>${patient.id}</span><span>•</span><span>${patient.room}</span><span>•</span><span>${patient.age} tuổi</span><span>•</span><span>${patient.kiosk}</span>
+									</div>
+								</div>
+							</div>
+							<div class="flex flex-wrap gap-2">
+								${statusBadge(patient.status)}
+								<button data-action="simulate-alert" class="rounded-2xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:-translate-y-0.5">Trigger alert</button>
+								<button data-action="open-toast" class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Toast</button>
+							</div>
+						</div>
+					</div>
+
+					<div class="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+						<div class="space-y-6">
+							<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+								${[
+									['Heart rate', `${patient.heartRate} bpm`, patient.heartRate > 110 || patient.heartRate < 55 ? 'red' : 'blue'],
+									['SpO₂', `${patient.spo2}%`, patient.spo2 < 94 ? 'amber' : 'mint'],
+									['Temperature', `${patient.temp}°C`, patient.temp > 37.6 ? 'red' : 'mint'],
+									['Battery', `${patient.battery}%`, patient.battery < 20 ? 'red' : patient.battery < 45 ? 'amber' : 'mint'],
+								].map(([label, value, tone]) => `
+									<div class="card rounded-[26px] p-4 shadow-soft">
+										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${label}</div>
+										<div class="mt-2 text-3xl font-black ${tone === 'red' ? 'text-red-600 dark:text-red-300' : tone === 'amber' ? 'text-amber-600 dark:text-amber-300' : tone === 'mint' ? 'text-emerald-600 dark:text-emerald-300' : 'text-brand-600 dark:text-brand-300'}">${value}</div>
+										<div class="mt-3">${progressBar(label === 'Battery' ? patient.battery : label === 'SpO₂' ? patient.spo2 : label === 'Temperature' ? Math.round((patient.temp / 40) * 100) : clamp(patient.heartRate, 0, 150), label === 'Temperature' ? 100 : label === 'Heart rate' ? 150 : 100, tone === 'red' ? 'danger' : tone === 'amber' ? 'warning' : 'mint')}</div>
+									</div>
+								`).join('')}
+							</div>
+							<div class="grid gap-4 lg:grid-cols-3">
+								${chartCard('Heart rate realtime', heartSeries, 'bpm', 'text-brand-600 dark:text-brand-300', 'Live stream')}
+								${chartCard('SpO₂ realtime', spo2Series, '%', 'text-emerald-600 dark:text-emerald-300', 'Oxygen saturation')}
+								${chartCard('Body temperature', tempSeries, '°C', 'text-amber-600 dark:text-amber-300', 'Body temp')}
+							</div>
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="flex items-center justify-between">
+									<div>
+										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Medical timeline</div>
+										<div class="mt-1 text-2xl font-black tracking-tight">Lịch sử check-in / check-out & cảnh báo</div>
+									</div>
+									<button data-action="export-pdf" class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">PDF report</button>
+								</div>
+								<div class="mt-5 space-y-4">
+									${patient.checkins.map((entry) => `
+										<div class="flex gap-4 rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+											<div class="mt-1 h-3 w-3 rounded-full ${entry.type === 'Check-in' ? 'bg-emerald-500' : entry.type === 'Medication' ? 'bg-brand-500' : 'bg-amber-500'}"></div>
+											<div class="flex-1">
+												<div class="flex items-center justify-between gap-3">
+													<div class="font-bold">${entry.type}</div>
+													<div class="text-sm text-slate-500 dark:text-slate-400">${formatDateTime(entry.time)}</div>
+												</div>
+												<div class="mt-1 text-sm text-slate-500 dark:text-slate-400">${entry.place}</div>
+											</div>
+										</div>
+									`).join('')}
+								</div>
+							</div>
+						</div>
+						<div class="space-y-6">
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Patient profile</div>
+								<div class="mt-1 text-2xl font-black tracking-tight">Hồ sơ và thiết bị</div>
+								<div class="mt-5 grid gap-4 sm:grid-cols-2">
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">BLE</div><div class="mt-2 text-lg font-black ${patient.signalLost ? 'text-red-600 dark:text-red-300' : 'text-emerald-600 dark:text-emerald-300'}">${patient.ble}</div></div>
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">RSSI</div><div class="mt-2 text-lg font-black text-slate-900 dark:text-white">${patient.rssi} dBm</div></div>
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Wearable battery</div><div class="mt-2 text-lg font-black text-slate-900 dark:text-white">${patient.battery}%</div></div>
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Last update</div><div class="mt-2 text-lg font-black text-slate-900 dark:text-white">${formatTime(patient.lastUpdate)}</div></div>
+								</div>
+								<div class="mt-5 rounded-[24px] border border-slate-200 bg-gradient-to-br from-brand-50 via-white to-emerald-50 p-4 dark:border-slate-800 dark:from-brand-500/10 dark:via-slate-950 dark:to-emerald-500/10">
+									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Risk score</div>
+									<div class="mt-2 flex items-end justify-between gap-3">
+										<div class="text-4xl font-black ${patient.riskScore > 75 ? 'text-red-600 dark:text-red-300' : patient.riskScore > 45 ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}">${patient.riskScore}</div>
+										<div class="w-40">${progressBar(patient.riskScore, 100, patient.riskScore > 75 ? 'danger' : patient.riskScore > 45 ? 'warning' : 'mint')}</div>
+									</div>
+								</div>
+							</div>
+
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="flex items-center justify-between">
+									<div>
+										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Alert timeline</div>
+										<div class="mt-1 text-2xl font-black tracking-tight">Medical history feed</div>
+									</div>
+									<span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 dark:bg-slate-900 dark:text-slate-300">${patient.timeline.length} events</span>
+								</div>
+								<div class="mt-5 space-y-3">
+									${patient.timeline.map((item) => `
+										<div class="flex gap-4 rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+											<div class="mt-1 h-10 w-10 rounded-2xl bg-white p-2 text-brand-600 shadow-sm dark:bg-slate-900 dark:text-brand-300"><i data-lucide="activity" class="h-6 w-6"></i></div>
+											<div class="flex-1">
+												<div class="flex items-center justify-between gap-3">
+													<div class="font-bold">${item.label}</div>
+													<div class="text-sm text-slate-500 dark:text-slate-400">${formatDateTime(item.time)}</div>
+												</div>
+												<div class="mt-1 text-sm text-slate-500 dark:text-slate-400">${item.note}</div>
+											</div>
+										</div>
+									`).join('')}
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function renderMap() {
+			const kiosks = [
+				{ name: 'Kiosk 01', x: 12, y: 16, color: 'bg-brand-500', patients: 3 },
+				{ name: 'Kiosk 02', x: 40, y: 14, color: 'bg-emerald-500', patients: 4 },
+				{ name: 'Kiosk 03', x: 67, y: 19, color: 'bg-cyan-500', patients: 2 },
+				{ name: 'Kiosk 04', x: 21, y: 59, color: 'bg-amber-500', patients: 3 },
+				{ name: 'Kiosk 05', x: 58, y: 62, color: 'bg-red-500', patients: 4 },
+			];
+			return `
+				<div class="space-y-6 animate-slideIn">
+					<div class="card rounded-[30px] p-5 shadow-soft">
+						<div class="flex items-center justify-between gap-4">
+							<div>
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Bản đồ khu vực</div>
+								<div class="mt-1 text-2xl font-black tracking-tight">Mock floor plan cho bệnh viện / viện dưỡng lão</div>
+							</div>
+							<div class="flex gap-2">
+								<button data-action="toggle-sound" class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Sound: ${state.soundEnabled ? 'On' : 'Off'}</button>
+								<button data-action="open-toast" class="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white dark:bg-white dark:text-slate-950">Realtime pulse</button>
+							</div>
+						</div>
+					</div>
+					<div class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+						<div class="card relative overflow-hidden rounded-[34px] p-6 shadow-soft">
+							<div class="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-brand-50/60 dark:from-slate-950 dark:via-slate-900 dark:to-brand-500/5"></div>
+							<div class="relative h-[620px] overflow-hidden rounded-[28px] border border-slate-200 bg-white/70 p-4 dark:border-slate-800 dark:bg-slate-950/70">
+								<div class="absolute inset-0 opacity-[0.08]" style="background-image:linear-gradient(to right, rgba(59,130,246,.8) 1px, transparent 1px), linear-gradient(to bottom, rgba(59,130,246,.8) 1px, transparent 1px); background-size: 28px 28px;"></div>
+								<div class="absolute left-[18%] top-[16%] h-[32%] w-[26%] rounded-[36px] border-2 border-dashed border-brand-300/70 bg-brand-50/50 dark:border-brand-500/40 dark:bg-brand-500/10"></div>
+								<div class="absolute right-[14%] top-[26%] h-[18%] w-[24%] rounded-[32px] border-2 border-dashed border-amber-300/70 bg-amber-50/60 dark:border-amber-500/40 dark:bg-amber-500/10"></div>
+								<div class="absolute right-[11%] bottom-[12%] h-[22%] w-[28%] rounded-[34px] border-2 border-dashed border-red-300/70 bg-red-50/60 dark:border-red-500/40 dark:bg-red-500/10"></div>
+								<div class="absolute left-[38%] top-[50%] h-[18%] w-[18%] rounded-[30px] border border-slate-200 bg-slate-100/60 dark:border-slate-700 dark:bg-slate-900/70"></div>
+								<div class="relative h-full">
+									${kiosks.map((kiosk) => `
+										<div class="absolute" style="top:${kiosk.y}%; left:${kiosk.x}%;">
+											<div class="flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
+												<div class="relative">
+													<div class="h-6 w-6 animate-ping rounded-full ${kiosk.color} opacity-30"></div>
+													<div class="absolute inset-0 h-6 w-6 rounded-full ${kiosk.color}"></div>
+												</div>
+												<div class="mt-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-center text-xs font-semibold shadow-soft dark:border-slate-800 dark:bg-slate-950">
+													<div class="font-black text-slate-900 dark:text-white">${kiosk.name}</div>
+													<div class="text-slate-500 dark:text-slate-400">${kiosk.patients} patients</div>
+												</div>
+											</div>
+										</div>
+									`).join('')}
+									${patients.filter((patient) => patient.status === 'danger').slice(0, 4).map((patient, index) => `
+										<div class="absolute" style="top:${20 + index * 12}%; left:${70 - index * 10}%;">
+											<div class="flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-lg ${patient.fall ? 'pulse-critical' : ''}">
+												<span class="h-2 w-2 rounded-full bg-white/90"></span>${patient.avatar} · ${patient.room}
+											</div>
+										</div>
+									`).join('')}
+									<div class="absolute left-6 top-6 rounded-full bg-white/80 px-3 py-2 text-xs font-semibold text-slate-500 shadow-soft dark:bg-slate-950/80 dark:text-slate-300">North wing</div>
+									<div class="absolute bottom-6 right-6 rounded-full bg-white/80 px-3 py-2 text-xs font-semibold text-slate-500 shadow-soft dark:bg-slate-950/80 dark:text-slate-300">Signal loss zone</div>
+								</div>
+							</div>
+						</div>
+						<div class="space-y-6">
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Live zones</div>
+								<div class="mt-1 text-2xl font-black tracking-tight">Trạng thái sơ đồ khu vực</div>
+								<div class="mt-5 space-y-3">
+									${[
+										['Vùng an toàn', '86% active', 'mint'],
+										['Zone cảnh báo', '9% active', 'amber'],
+										['Zone tín hiệu yếu', '5% active', 'red'],
+									].map(([label, value, tone]) => `
+										<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+											<div class="flex items-center justify-between gap-3">
+												<div class="font-semibold">${label}</div>
+												<div class="text-sm font-black ${tone === 'mint' ? 'text-emerald-600 dark:text-emerald-300' : tone === 'amber' ? 'text-amber-600 dark:text-amber-300' : 'text-red-600 dark:text-red-300'}">${value}</div>
+											</div>
+											<div class="mt-3">${progressBar(tone === 'mint' ? 86 : tone === 'amber' ? 9 : 5, 100, tone === 'mint' ? 'mint' : tone === 'amber' ? 'warning' : 'danger')}</div>
+										</div>
+									`).join('')}
+								</div>
+							</div>
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="flex items-center justify-between">
+									<div>
+										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Kiosk overview</div>
+										<div class="mt-1 text-2xl font-black tracking-tight">Vị trí và tình trạng</div>
+									</div>
+									<i data-lucide="map" class="h-6 w-6 text-brand-500"></i>
+								</div>
+								<div class="mt-5 grid gap-3 sm:grid-cols-2">
+									${patients.slice(0, 6).map((patient) => `
+										<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+											<div class="flex items-center gap-3">
+												<div class="h-11 w-11 rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-400 text-center text-sm font-black leading-10 text-white">${patient.avatar}</div>
+												<div>
+													<div class="font-bold">${patient.name}</div>
+													<div class="text-xs text-slate-500 dark:text-slate-400">${patient.kiosk} · ${patient.zone}</div>
+												</div>
+											</div>
+										</div>
+									`).join('')}
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function renderAi() {
+			const topRisk = [...patients].sort((left, right) => right.riskScore - left.riskScore).slice(0, 4);
+			const avgRisk = Math.round(patients.reduce((sum, patient) => sum + patient.riskScore, 0) / patients.length);
+			return `
+				<div class="space-y-6 animate-slideIn">
+					<div class="card rounded-[30px] p-5 shadow-soft">
+						<div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+							<div>
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">AI Analysis</div>
+								<div class="mt-1 text-3xl font-black tracking-tight">Phân tích xu hướng và dự đoán nguy cơ</div>
+							</div>
+							<div class="rounded-full bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">Risk avg ${avgRisk}/100</div>
+						</div>
+					</div>
+					<div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+						<div class="space-y-6">
+							<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+								${[
+									{ title: 'Need attention', value: `${topRisk.length}`, desc: 'Patients with elevated risk', tone: 'red', icon: 'brain-circuit' },
+									{ title: 'Trend signal', value: 'Upward', desc: 'Heart rate variance rising', tone: 'amber', icon: 'trending-up' },
+									{ title: 'Stable cohort', value: `${patients.filter((patient) => patient.status === 'safe').length}`, desc: 'Still within normal bands', tone: 'mint', icon: 'shield-check' },
+								].map((item) => `
+									<div class="card rounded-[28px] p-5 shadow-soft">
+										<div class="flex items-start justify-between gap-3">
+											<div>
+												<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${item.title}</div>
+												<div class="mt-2 text-3xl font-black ${item.tone === 'red' ? 'text-red-600 dark:text-red-300' : item.tone === 'amber' ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}">${item.value}</div>
+												<div class="mt-2 text-sm text-slate-500 dark:text-slate-400">${item.desc}</div>
+											</div>
+											${iconCircle(item.icon, item.tone)}
+										</div>
+									</div>
+								`).join('')}
+							</div>
+							<div class="grid gap-4 lg:grid-cols-2">
+								${chartCard('Trend: average risk', Array.from({ length: 18 }, (_, index) => Math.round(avgRisk + Math.sin(index / 3) * 8 + rand(-2, 2))), 'pts', 'text-red-600 dark:text-red-300', 'Prediction engine')}
+								${chartCard('Alert probability', Array.from({ length: 18 }, (_, index) => Math.round(clamp(18 + index * 2.2 + Math.sin(index / 2) * 6 + rand(-2, 3), 10, 99))), '%', 'text-amber-600 dark:text-amber-300', 'Forecast 24h')}
+							</div>
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="flex items-center justify-between">
+									<div>
+										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">AI auto report</div>
+										<div class="mt-1 text-2xl font-black tracking-tight">Báo cáo tự động</div>
+									</div>
+									<button data-action="export-pdf" class="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white dark:bg-white dark:text-slate-950">Export PDF</button>
+								</div>
+								<div class="mt-5 grid gap-4 md:grid-cols-2">
+									<div class="rounded-[24px] bg-emerald-50 p-5 dark:bg-emerald-500/10">
+										<div class="text-sm font-bold text-emerald-700 dark:text-emerald-300">Positive insight</div>
+										<div class="mt-2 text-base leading-7 text-slate-700 dark:text-slate-200">Phần lớn bệnh nhân đang nằm trong ngưỡng an toàn; điều kiện hệ thống ổn định, phù hợp theo dõi ca đêm.</div>
+									</div>
+									<div class="rounded-[24px] bg-red-50 p-5 dark:bg-red-500/10">
+										<div class="text-sm font-bold text-red-700 dark:text-red-300">Action required</div>
+										<div class="mt-2 text-base leading-7 text-slate-700 dark:text-slate-200">3 bệnh nhân có nguy cơ cao do SpO₂ thấp, té ngã hoặc mất tín hiệu. Cần y tá kiểm tra trong 5 phút.</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="space-y-6">
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Patients needing attention</div>
+								<div class="mt-1 text-2xl font-black tracking-tight">Danh sách ưu tiên</div>
+								<div class="mt-5 space-y-3">
+									${topRisk.map((patient) => `
+										<button data-action="open-patient" data-id="${patient.id}" class="w-full rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-soft dark:border-slate-800 dark:bg-slate-950/50">
+											<div class="flex items-center justify-between gap-3">
+												<div>
+													<div class="font-bold">${patient.name}</div>
+													<div class="text-sm text-slate-500 dark:text-slate-400">Risk score ${patient.riskScore}</div>
+												</div>
+												<div class="text-right">
+													<div class="text-sm font-bold ${patient.riskScore > 75 ? 'text-red-600 dark:text-red-300' : 'text-amber-600 dark:text-amber-300'}">${patient.status.toUpperCase()}</div>
+													<div class="text-xs text-slate-500 dark:text-slate-400">${patient.kiosk}</div>
+												</div>
+											</div>
+											<div class="mt-4">${progressBar(patient.riskScore, 100, patient.riskScore > 75 ? 'danger' : 'warning')}</div>
+										</button>
+									`).join('')}
+								</div>
+							</div>
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">AI recommendations</div>
+								<div class="mt-1 text-2xl font-black tracking-tight">Khuyến nghị tự động</div>
+								<div class="mt-5 space-y-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">1. Theo dõi riêng các bệnh nhân có <span class="font-bold text-red-600 dark:text-red-300">SpO₂ dưới 94%</span> trong ca hiện tại.</div>
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">2. Ưu tiên kiểm tra thiết bị đeo có RSSI thấp và pin dưới 20%.</div>
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">3. Gợi ý xác nhận khu vực nếu cảnh báo té ngã xuất hiện liên tiếp 2 lần.</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function renderHistory() {
+			const series = Array.from({ length: 24 }, (_, index) => Math.round(72 + Math.sin(index / 4) * 10 + rand(-4, 4)));
+			return `
+				<div class="space-y-6 animate-slideIn">
+					<div class="card rounded-[30px] p-5 shadow-soft">
+						<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+							<div>
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Lịch sử dữ liệu</div>
+								<div class="mt-1 text-2xl font-black tracking-tight">Heatmap, trend và audit trail</div>
+							</div>
+							<div class="flex flex-wrap gap-2">
+								${['24h', '7d', '30d'].map((range) => `<button data-action="set-range" data-range="${range}" class="rounded-2xl px-4 py-2.5 text-sm font-bold ${state.historyRange === range ? 'bg-brand-500 text-white shadow-glow' : 'border border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200'}">${range}</button>`).join('')}
+							</div>
+						</div>
+					</div>
+					<div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+						<div class="space-y-6">
+							${chartCard('Audit trend', series, 'pts', 'text-brand-600 dark:text-brand-300', 'Historical view')}
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Event history</div>
+								<div class="mt-1 text-2xl font-black tracking-tight">Bản ghi sự kiện</div>
+								<div class="mt-5 space-y-3">
+									${patients.slice(0, 8).map((patient) => `
+										<div class="flex items-center justify-between rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+											<div>
+												<div class="font-bold">${patient.name}</div>
+												<div class="text-sm text-slate-500 dark:text-slate-400">${patient.status === 'danger' ? 'Alarm logged' : 'Vitals archived'} · ${patient.kiosk}</div>
+											</div>
+											<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${formatRelative((Date.now() - patient.lastUpdate.getTime()) / 60000)}</div>
+										</div>
+									`).join('')}
+								</div>
+							</div>
+						</div>
+						<div class="space-y-6">
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Report controls</div>
+								<div class="mt-1 text-2xl font-black tracking-tight">Xuất dữ liệu nhanh</div>
+								<div class="mt-5 space-y-3">
+									<button data-action="export-pdf" class="w-full rounded-2xl bg-slate-950 px-4 py-3.5 text-sm font-bold text-white dark:bg-white dark:text-slate-950">Export PDF report</button>
+									<button data-action="open-toast" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Send summary to nurse station</button>
+								</div>
+							</div>
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Historical KPIs</div>
+								<div class="mt-1 text-2xl font-black tracking-tight">Theo dõi xu hướng</div>
+								<div class="mt-5 space-y-4">
+									${[
+										['Average HR', '74 bpm', 'mint'],
+										['Avg SpO₂', '96%', 'mint'],
+										['Alert rate', '12%', 'amber'],
+										['Fall events', '2', 'red'],
+									].map(([label, value, tone]) => `
+										<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+											<div class="flex items-center justify-between gap-3"><div class="font-semibold">${label}</div><div class="font-black ${tone === 'mint' ? 'text-emerald-600 dark:text-emerald-300' : tone === 'red' ? 'text-red-600 dark:text-red-300' : 'text-amber-600 dark:text-amber-300'}">${value}</div></div>
+										</div>
+									`).join('')}
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function renderSettings() {
+			return `
+				<div class="space-y-6 animate-slideIn">
+					<div class="card rounded-[30px] p-5 shadow-soft">
+						<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Cấu hình</div>
+						<div class="mt-1 text-2xl font-black tracking-tight">Settings / Preferences</div>
+					</div>
+					<div class="grid gap-6 xl:grid-cols-[1fr_1fr]">
+						<div class="space-y-6">
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="flex items-center justify-between gap-4">
+									<div>
+										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Appearance</div>
+										<div class="mt-1 text-xl font-black">Dark mode</div>
+									</div>
+									<button data-action="toggle-theme" class="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white dark:bg-white dark:text-slate-950">${state.darkMode ? 'On' : 'Off'}</button>
+								</div>
+								<div class="mt-5 grid gap-3 sm:grid-cols-2">
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Theme</div><div class="mt-2 text-lg font-black">Healthcare calm</div></div>
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Font</div><div class="mt-2 text-lg font-black">Plus Jakarta Sans</div></div>
+								</div>
+							</div>
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Connection</div>
+								<div class="mt-1 text-xl font-black">MQTT / WebSocket</div>
+								<div class="mt-5 space-y-3">
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="flex items-center justify-between"><span class="font-semibold">MQTT</span><span class="font-bold ${state.mqttStatus === 'connected' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${state.mqttStatus}</span></div></div>
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="flex items-center justify-between"><span class="font-semibold">Wi-Fi</span><span class="font-bold ${state.wifiStatus === 'stable' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${state.wifiStatus}</span></div></div>
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="flex items-center justify-between"><span class="font-semibold">Kiosk</span><span class="font-bold ${state.kioskStatus === 'online' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${state.kioskStatus}</span></div></div>
+								</div>
+							</div>
+						</div>
+						<div class="space-y-6">
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Profile</div>
+								<div class="mt-1 text-xl font-black">User dropdown mock</div>
+								<div class="mt-5 space-y-3 text-sm text-slate-600 dark:text-slate-300">
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">Role: Nurse / Doctor</div>
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">Notifications: On</div>
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">Language: Vietnamese</div>
+								</div>
+							</div>
+							<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">UI helpers</div>
+								<div class="mt-1 text-xl font-black">Loading skeleton / modal / toast</div>
+								<div class="mt-5 rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+									<div class="skeleton animate-shimmer h-4 w-3/4 rounded-full"></div>
+									<div class="mt-3 space-y-3">
+										<div class="skeleton animate-shimmer h-4 w-full rounded-full"></div>
+										<div class="skeleton animate-shimmer mt-3 h-4 w-5/6 rounded-full"></div>
+										<div class="skeleton animate-shimmer mt-3 h-4 w-2/3 rounded-full"></div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function renderAppShell(content) {
+			return `
+				<div class="min-h-screen">
+					<div class="flex min-h-screen">
+						<div class="lg:hidden ${state.sidebarOpen ? 'block' : 'hidden'} fixed inset-0 z-30 bg-slate-950/30 backdrop-blur-[1px]" data-action="toggle-sidebar"></div>
+						${renderSidebar()}
+						<div class="flex min-w-0 flex-1 flex-col">
+							<header class="sticky top-0 z-20 sticky-blur border-b border-slate-200/70 px-4 py-4 dark:border-slate-800/70 sm:px-6 lg:px-8">
+								<div class="flex items-center gap-3">
+									<button data-action="toggle-sidebar" class="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 lg:hidden"><i data-lucide="menu" class="h-5 w-5"></i></button>
+									<div class="hidden md:block">
+										<div class="text-sm text-slate-500 dark:text-slate-400">Hospital / elder care monitoring</div>
+										<div class="text-xl font-black tracking-tight">Realtime patient care dashboard</div>
+									</div>
+									<div class="ml-auto flex items-center gap-2 md:gap-3">
+										<div class="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 sm:inline-flex sm:items-center sm:gap-2"><span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>Connected</div>
+										<button data-action="toggle-notifications" class="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"><i data-lucide="bell" class="h-5 w-5"></i></button>
+										<button data-action="toggle-theme" class="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"><i data-lucide="${state.darkMode ? 'sun-medium' : 'moon-star'}" class="h-5 w-5"></i></button>
+										<button data-action="toggle-profile" class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+											<span class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-cyan-400 text-xs font-black text-white">YT</span>
+											<span class="hidden sm:inline">Y tá trưởng</span>
+											<i data-lucide="chevron-down" class="h-4 w-4"></i>
+										</button>
+									</div>
+								</div>
+							</header>
+							<main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+								${content}
+							</main>
+						</div>
+					</div>
+					${renderFloatingPanels()}
+				</div>
+			`;
+		}
+
+		function renderFloatingPanels() {
+			const notifications = state.toastQueue.slice(0, 4).map((toast) => `
+				<div class="rounded-[26px] border ${toast.tone === 'danger' ? 'border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/10' : 'border-brand-200 bg-brand-50 dark:border-brand-500/20 dark:bg-brand-500/10'} p-4 shadow-soft">
+					<div class="flex items-start gap-3">
+						<div class="rounded-2xl ${toast.tone === 'danger' ? 'bg-red-600 text-white' : 'bg-brand-600 text-white'} p-2"><i data-lucide="${toast.tone === 'danger' ? 'triangle-alert' : 'bell'}" class="h-4 w-4"></i></div>
+						<div class="min-w-0 flex-1">
+							<div class="flex items-center justify-between gap-3">
+								<div class="font-bold">${toast.title}</div>
+								<button data-action="dismiss-toast" data-id="${toast.id}" class="text-slate-400 transition hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="x" class="h-4 w-4"></i></button>
+							</div>
+							<div class="mt-1 text-sm text-slate-600 dark:text-slate-300">${toast.message}</div>
+						</div>
+					</div>
+				</div>
+			`).join('');
+
+			const profileMenu = state.profileOpen ? `
+				<div class="fixed right-4 top-20 z-50 w-[290px] rounded-[28px] border border-slate-200 bg-white p-3 shadow-soft dark:border-slate-800 dark:bg-slate-950 animate-pop sm:right-6 lg:right-8">
+					<button data-action="switch-view" data-view="settings" class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><i data-lucide="settings-2" class="h-4 w-4"></i> Settings</button>
+					<button data-action="switch-view" data-view="history" class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><i data-lucide="history" class="h-4 w-4"></i> Lịch sử</button>
+					<button data-action="toggle-theme" class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><i data-lucide="${state.darkMode ? 'sun-medium' : 'moon-star'}" class="h-4 w-4"></i> ${state.darkMode ? 'Light mode' : 'Dark mode'}</button>
+					<div class="my-2 h-px bg-slate-200 dark:bg-slate-800"></div>
+					<button data-action="logout" class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"><i data-lucide="log-out" class="h-4 w-4"></i> Logout demo</button>
+				</div>
+			` : '';
+
+			const notificationsPanel = state.notificationsOpen ? `
+				<div class="fixed right-4 top-20 z-50 w-[340px] rounded-[28px] border border-slate-200 bg-white p-4 shadow-soft dark:border-slate-800 dark:bg-slate-950 animate-pop sm:right-6 lg:right-8">
+					<div class="flex items-center justify-between">
+						<div>
+							<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Notification center</div>
+							<div class="text-xl font-black">${state.toastQueue.length} alerts</div>
+						</div>
+						<button data-action="toggle-notifications" class="rounded-2xl p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900"><i data-lucide="x" class="h-4 w-4"></i></button>
+					</div>
+					<div class="mt-4 space-y-3 max-h-[60vh] overflow-auto pr-1 hide-scrollbar">
+						${state.toastQueue.map((toast) => `
+							<div class="rounded-[24px] ${toast.tone === 'danger' ? 'bg-red-50 dark:bg-red-500/10' : 'bg-brand-50 dark:bg-brand-500/10'} p-4">
+								<div class="font-bold">${toast.title}</div>
+								<div class="mt-1 text-sm text-slate-600 dark:text-slate-300">${toast.message}</div>
+								<div class="mt-2 text-xs text-slate-400">${formatTime(toast.time || new Date())}</div>
+							</div>
+						`).join('') || '<div class="rounded-[24px] bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">Không có thông báo mới</div>'}
+					</div>
+				</div>
+			` : '';
+
+			const alertModal = state.alertModal ? `
+				<div class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
+					<div class="w-full max-w-2xl rounded-[34px] border border-red-300 bg-white p-6 shadow-soft animate-pop dark:border-red-500/20 dark:bg-slate-950">
+						<div class="flex items-start gap-4">
+							<div class="flex h-14 w-14 items-center justify-center rounded-[24px] bg-red-600 text-white pulse-critical"><i data-lucide="triangle-alert" class="h-7 w-7"></i></div>
+							<div class="flex-1">
+								<div class="text-sm font-semibold uppercase tracking-[0.24em] text-red-500">Emergency alert</div>
+								<div class="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">${state.alertModal.patient.name}</div>
+								<div class="mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">${state.alertModal.type === 'critical' ? 'Phát hiện sự kiện khẩn cấp: té ngã, mất tín hiệu hoặc sinh hiệu bất thường.' : 'Cảnh báo cần kiểm tra ngay.'}</div>
+								<div class="mt-4 grid gap-3 sm:grid-cols-3">
+									<div class="rounded-[22px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold uppercase tracking-[0.18em] text-red-500">Time</div><div class="mt-2 font-black">${formatTime(state.alertModal.time)}</div></div>
+									<div class="rounded-[22px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold uppercase tracking-[0.18em] text-red-500">Kiosk</div><div class="mt-2 font-black">${state.alertModal.kiosk}</div></div>
+									<div class="rounded-[22px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold uppercase tracking-[0.18em] text-red-500">Room</div><div class="mt-2 font-black">${state.alertModal.patient.room}</div></div>
+								</div>
+							</div>
+							<button data-action="dismiss-alert" class="rounded-2xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-900 dark:hover:text-slate-200"><i data-lucide="x" class="h-5 w-5"></i></button>
+						</div>
+					</div>
+				</div>
+			` : '';
+
+			return `
+				${profileMenu}
+				${notificationsPanel}
+				${alertModal}
+				<div class="fixed bottom-4 right-4 z-40 flex flex-col gap-3 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8">
+					${notifications}
+				</div>
+			`;
+		}
+
+		function escapeHtml(value) {
+			return String(value || '')
+				.replaceAll('&', '&amp;')
+				.replaceAll('<', '&lt;')
+				.replaceAll('>', '&gt;')
+				.replaceAll('"', '&quot;')
+				.replaceAll("'", '&#39;');
+		}
+
+		function render() {
+			const app = document.getElementById('app');
+			const contentMap = {
+				dashboard: renderOverview(),
+				patients: renderPatients(),
+				detail: renderPatientDetail(),
+				map: renderMap(),
+				ai: renderAi(),
+				history: renderHistory(),
+				settings: renderSettings(),
+			};
+
+			let output;
+			if (!state.authed) {
+				output = state.screen === 'login' ? renderLogin() : renderLanding();
+			} else {
+				output = renderAppShell(contentMap[state.view] || renderOverview());
+			}
+
+			if (state.loading) {
+				output = `
+					<div class="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+						<div class="card mx-auto max-w-7xl rounded-[34px] p-6 shadow-soft">
+							<div class="grid gap-4 md:grid-cols-4">
+								${Array.from({ length: 8 }).map(() => `
+									<div class="rounded-[26px] border border-slate-200 p-5 dark:border-slate-800">
+										<div class="skeleton animate-shimmer h-4 w-1/2 rounded-full"></div>
+										<div class="skeleton animate-shimmer mt-4 h-8 w-2/3 rounded-full"></div>
+										<div class="skeleton animate-shimmer mt-3 h-3 w-full rounded-full"></div>
+										<div class="skeleton animate-shimmer mt-2 h-3 w-5/6 rounded-full"></div>
+									</div>
+								`).join('')}
+							</div>
+						</div>
+					</div>
+				`;
+			}
+
+			app.innerHTML = output;
+			applyTheme();
+			if (window.lucide) lucide.createIcons();
+			bindEvents();
+		}
+
+		function applyTheme() {
+			document.documentElement.classList.toggle('dark', state.darkMode);
+			localStorage.setItem(THEME_KEY, state.darkMode ? 'dark' : 'light');
+		}
+
+		function showToast(title, message, tone = 'info') {
+			const toast = { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, title, message, tone, time: new Date() };
+			state.toastQueue.unshift(toast);
+			state.toastQueue = state.toastQueue.slice(0, 5);
+			render();
+			setTimeout(() => {
+				state.toastQueue = state.toastQueue.filter((item) => item.id !== toast.id);
+				render();
+			}, 4200);
+		}
+
+		function bindEvents() {
+			const app = document.getElementById('app');
+			app.querySelectorAll('[data-bind]').forEach((element) => {
+				element.addEventListener('input', (event) => {
+					state[element.dataset.bind] = event.target.value;
+					if (element.dataset.bind === 'pageSize') state.page = 1;
+					render();
+				});
+			});
+			app.querySelectorAll('select[data-bind]').forEach((element) => {
+				element.addEventListener('change', (event) => {
+					state[element.dataset.bind] = event.target.value;
+					if (element.dataset.bind === 'pageSize') state.page = 1;
+					render();
+				});
+			});
+			app.querySelectorAll('[data-action]').forEach((element) => {
+				element.addEventListener('click', (event) => {
+					const action = element.dataset.action;
+					const view = element.dataset.view;
+					const id = element.dataset.id;
+					const range = element.dataset.range;
+					const page = element.dataset.page;
+					if (action === 'toggle-theme') {
+						state.darkMode = !state.darkMode;
+						applyTheme();
+						render();
+					}
+					if (action === 'show-login') {
+						state.screen = 'login';
+						render();
+					}
+					if (action === 'show-landing') {
+						state.screen = 'landing';
+						state.authed = false;
+						render();
+					}
+					if (action === 'demo-login') {
+						state.authed = true;
+						state.screen = 'app';
+						state.loading = false;
+						state.profileOpen = false;
+						state.notificationsOpen = false;
+						showToast('Chào mừng', 'Đăng nhập thành công vào MedPulse.', 'info');
+						render();
+					}
+					if (action === 'fill-demo') {
+						state.inputName = 'nurse.le';
+						state.loginPin = DEMO_PASSWORD;
+						render();
+					}
+					if (action === 'toggle-sidebar') {
+						state.sidebarOpen = !state.sidebarOpen;
+						render();
+					}
+					if (action === 'toggle-profile') {
+						state.profileOpen = !state.profileOpen;
+						state.notificationsOpen = false;
+						render();
+					}
+					if (action === 'toggle-notifications') {
+						state.notificationsOpen = !state.notificationsOpen;
+						state.profileOpen = false;
+						render();
+					}
+					if (action === 'switch-view' && view) {
+						state.view = view;
+						state.profileOpen = false;
+						state.notificationsOpen = false;
+						state.sidebarOpen = window.innerWidth >= 1024;
+						if (view === 'detail' && !state.selectedPatientId) state.selectedPatientId = patients[0].id;
+						render();
+					}
+					if (action === 'open-patient' && id) {
+						state.selectedPatientId = id;
+						state.view = 'detail';
+						state.profileOpen = false;
+						state.notificationsOpen = false;
+						render();
+					}
+					if (action === 'paginate' && page) {
+						state.page = Number(page);
+						render();
+					}
+					if (action === 'export-pdf') {
+						window.print();
+					}
+					if (action === 'simulate-alert') {
+						enqueueAlert(currentPatient(), 'critical', { showModal: true });
+					}
+					if (action === 'open-toast') {
+						showToast('Synced', 'Dữ liệu realtime vừa được cập nhật từ MQTT.', 'info');
+					}
+					if (action === 'dismiss-alert') {
+						state.alertModal = null;
+						render();
+					}
+					if (action === 'dismiss-toast' && id) {
+						state.toastQueue = state.toastQueue.filter((toast) => toast.id !== id);
+						render();
+					}
+					if (action === 'toggle-sound') {
+						state.soundEnabled = !state.soundEnabled;
+						render();
+					}
+					if (action === 'set-range' && range) {
+						state.historyRange = range;
+						render();
+					}
+					if (action === 'logout') {
+						state.authed = false;
+						state.screen = 'landing';
+						state.profileOpen = false;
+						state.notificationsOpen = false;
+						render();
+					}
+					event.preventDefault();
+				});
+			});
+		}
+
+		function bootstrap() {
+			const savedTheme = localStorage.getItem(THEME_KEY);
+			if (savedTheme) state.darkMode = savedTheme === 'dark';
+			const saved = localStorage.getItem(STORAGE_KEY);
+			if (saved) {
+				try {
+					const parsed = JSON.parse(saved);
+					Object.assign(state, parsed);
+					state.loading = true;
+				} catch (error) {
+				}
+			}
+			applyTheme();
+			render();
+			setTimeout(() => {
+				state.loading = false;
+				if (!state.authed) {
+					state.screen = 'landing';
+				}
+				render();
+			}, 900);
+			// =========================================================================
+					// ĐOẠN MÃ MỚI: KẾT NỐI REAL-TIME WEBSOCKET TỚI BACKEND
+					// =========================================================================
+					const BACKEND_WS_URL = window.location.hostname === 'localhost'
+					? 'ws://localhost:5000'
+					: `wss://${window.location.hostname}`;// Địa chỉ Backend Node.js của bạn
+					let socket = null;
+					let reconnectTimer = null;
+
+					function initMedPulseWebSocket() {
+						if (socket) {
+							socket.close();
+						}
+
+						socket = new WebSocket(BACKEND_WS_URL);
+
+						socket.onopen = () => {
+							console.log("🟢 Giao diện Web đã kết nối tới Bộ não trung tâm (Port 5000)!");
+							state.mqttStatus = 'connected';
+							state.wifiStatus = 'stable';
+							if (reconnectTimer) clearTimeout(reconnectTimer);
+							render();
+						};
+
+						socket.onmessage = (event) => {
+        try {
+            const rawPayload = JSON.parse(event.data);
+            
+            // 1. Đồng bộ ban đầu khi load trang
+            if (rawPayload.type === 'INITIAL_SYNC') {
+                rawPayload.data.forEach(remotePatient => {
+                    const localPatient = patients.find(p => p.id === remotePatient.id);
+                    if (localPatient) {
+                        Object.assign(localPatient, remotePatient);
+                        // SỬA TẠI ĐÂY: Ép chuỗi chữ từ Backend thành đối tượng Date thực thụ
+                        localPatient.lastUpdate = new Date(remotePatient.lastUpdate);
+                    }
+                });
+                render();
+                return;
+            }
+
+            // 2. Nhận cập nhật thời gian thực từ ESP32 gửi lên
+            if (rawPayload.type === 'PATIENT_UPDATE') {
+                const liveData = rawPayload.data;
+                const index = patients.findIndex(p => p.id === liveData.id);
+
+                if (index !== -1) {
+                    const oldData = patients[index];
+
+                    // Cập nhật mảng lịch sử (Giữ lại tối đa 30 điểm gần nhất giống code gốc của bạn)
+                    const updatedHistory = {
+                        heartRate: [...oldData.history.heartRate.slice(1), liveData.heartRate],
+                        spo2: [...oldData.history.spo2.slice(1), liveData.spo2],
+                        temp: [...oldData.history.temp.slice(1), liveData.temp]
+                    };
+
+                    // Ghi đè trạng thái sạch từ Backend
+                    patients[index] = {
+                        ...oldData,
+                        ...liveData,
+                        history: updatedHistory,
+                        // SỬA TẠI ĐÂY: Ép chuỗi chữ từ Backend thành đối tượng Date thực thụ
+                        lastUpdate: new Date(liveData.lastUpdate)
+                    };
+
+                    // Kích hoạt còi và modal báo động khẩn cấp mặc định của bạn
+                    if (liveData.fall) {
+                        enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 20000 });
+                    } else if (liveData.signalLost) {
+                        enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 30000 });
+                    } else if (liveData.status === 'warning') {
+                        enqueueAlert(patients[index], 'warning', { showModal: false, cooldownMs: 60000 });
+                    }
+
+                    render();
+                }
+            }
+        } catch (error) {
+            console.error("❌ Lỗi xử lý WebSocket:", error);
+        }
+    };
+
+						socket.onclose = () => {
+							console.warn("🔴 Mất kết nối tới Backend. Tự động kết nối lại sau 5 giây...");
+							state.mqttStatus = 'degraded';
+							state.wifiStatus = 'unstable';
+							render();
+
+							// Thiết lập cơ chế Auto-Reconnect tự động khôi phục đường truyền
+							clearTimeout(reconnectTimer);
+							reconnectTimer = setTimeout(initMedPulseWebSocket, 5000);
+						};
+
+						socket.onerror = (err) => {
+							console.error("❌ Lỗi đường truyền WebSocket:", err);
+						};
+					}
+
+					// Thay thế bộ đếm cũ để vừa quản lý LocalStorage vừa duy trì đường kết nối ngầm
+					setInterval(() => {
+						if (state.authed) {
+							localStorage.setItem(STORAGE_KEY, JSON.stringify({
+								authed: state.authed,
+								screen: state.screen,
+								view: state.view,
+								selectedPatientId: state.selectedPatientId,
+								darkMode: state.darkMode,
+								soundEnabled: state.soundEnabled,
+								historyRange: state.historyRange,
+							}));
+							
+							// Nếu người dùng đã đăng nhập và kết nối chưa mở thì kích hoạt kết nối WebSocket
+							if (!socket || socket.readyState === WebSocket.CLOSED) {
+								initMedPulseWebSocket();
+							}
+						}
+					}, 2600);
+			document.addEventListener('click', (event) => {
+				if (!event.target.closest('[data-action="toggle-profile"]')) {
+					state.profileOpen = false;
+				}
+				if (!event.target.closest('[data-action="toggle-notifications"]')) {
+					if (!event.target.closest('.fixed.right-4.top-20') && !event.target.closest('.fixed.right-6.top-20') && !event.target.closest('.fixed.right-8.top-20')) {
+						state.notificationsOpen = false;
+					}
+				}
+			});
+			window.addEventListener('keydown', (event) => {
+				if (event.key === 'Escape') {
+					state.profileOpen = false;
+					state.notificationsOpen = false;
+					state.alertModal = null;
+					render();
+				}
+			});
+		}
+
+		bootstrap();
+	</script>
+</body>
+</html>
