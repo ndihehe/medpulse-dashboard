@@ -66,6 +66,7 @@ totalPatientIds.forEach(id => {
         ble: 'Ổn định',
         riskScore: 4,
         status: 'IDLE',
+        current_status: 'IDLE',
         alertLevel: 'safe',
         statusHistory: [{ status: 'IDLE', at: new Date().toISOString() }],
         alert: false,
@@ -91,10 +92,18 @@ function applyFirmwareStatusToPatient(patient, firmwareStatus) {
     const meta = getFirmwareStatusMeta(status);
 
     patient.status = status;
+    patient.current_status = status;
     patient.fall = meta.fall;
     patient.safe = meta.safe;
 
     return meta;
+}
+
+function serializePatientState(patient) {
+    return {
+        ...patient,
+        current_status: patient.current_status || patient.status || 'IDLE',
+    };
 }
 
 
@@ -309,13 +318,13 @@ mqttClient.on('message', (topic, message) => {
 function saveVitalsToDatabase(p) {
     const query = `
         INSERT INTO vitals_log 
-        (patient_id, heart_rate, spo2, temp, battery, rssi, fall_status, is_safe, device_status, status_level, status_history, risk_score) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (patient_id, heart_rate, spo2, temp, battery, rssi, fall_status, is_safe, device_status, current_status, status_level, status_history, risk_score) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     const values = [
         p.id, p.heartRate, p.spo2, p.temp, p.battery, p.rssi, 
-        p.fall ? 1 : 0, p.safe ? 1 : 0, p.status, p.alertLevel, JSON.stringify(p.statusHistory || []), p.riskScore
+        p.fall ? 1 : 0, p.safe ? 1 : 0, p.status, p.current_status || p.status, p.alertLevel, JSON.stringify(p.statusHistory || []), p.riskScore
     ];
 
     db.query(query, values, (err, result) => {
@@ -326,7 +335,7 @@ function saveVitalsToDatabase(p) {
 }
 
 app.get('/api/patients', (req, res) => {
-    res.json(Object.values(patientsState));
+    res.json(Object.values(patientsState).map(serializePatientState));
 });
 
 app.get('/api/patients/:id', (req, res) => {
@@ -334,7 +343,7 @@ app.get('/api/patients/:id', (req, res) => {
     if (!patient) {
         return res.status(404).json({ error: 'Không tìm thấy bệnh nhân' });
     }
-    res.json(patient);
+    res.json(serializePatientState(patient));
 });
 
 
@@ -347,7 +356,7 @@ app.get('/api/patients/:id/history', (req, res) => {
     const limit = parseInt(req.query.limit) || 30; // Mặc định lấy 30 điểm dữ liệu gần nhất để vẽ hình
 
     const query = `
-        SELECT heart_rate as heartRate, spo2, temp, device_status as status, status_level as alertLevel, status_history as statusHistory, risk_score as riskScore, recorded_at as time 
+        SELECT heart_rate as heartRate, spo2, temp, device_status as status, current_status, status_level as alertLevel, status_history as statusHistory, risk_score as riskScore, recorded_at as time 
         FROM vitals_log 
         WHERE patient_id = ? 
         ORDER BY recorded_at DESC 
