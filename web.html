@@ -1576,6 +1576,21 @@
 									</div>
 								</div>
 							</div>
+								<div class="card rounded-[30px] p-5 shadow-soft">
+									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Firmware sequence</div>
+									<div class="mt-1 text-2xl font-black tracking-tight">Chuỗi trạng thái từ firmware</div>
+									<div class="mt-5 space-y-3">
+										${(patient.statusHistory || []).slice(-8).reverse().map((entry) => `
+											<div class="flex items-center justify-between gap-3 rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+												<div class="flex items-center gap-3">
+													${statusBadge(entry.status)}
+													<div class="text-sm text-slate-500 dark:text-slate-400">${firmwareStatusLabel(entry.status)}</div>
+												</div>
+												<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${formatDateTime(new Date(entry.at))}</div>
+											</div>
+										`).join('') || '<div class="rounded-[24px] bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-950/50 dark:text-slate-400">Chưa có chuỗi trạng thái firmware.</div>'}
+									</div>
+								</div>
 						</div>
 					</div>
 				</div>
@@ -1911,9 +1926,13 @@
 			// =========================================================================
 					// ĐOẠN MÃ MỚI: KẾT NỐI REAL-TIME WEBSOCKET TỚI BACKEND
 					// =========================================================================
-					const BACKEND_WS_URL = window.location.hostname === 'localhost'
-					? 'ws://localhost:5000'
-					: `wss://${window.location.hostname}`;// Địa chỉ Backend Node.js của bạn
+					const BACKEND_WS_URL = (() => {
+						if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+							return 'ws://localhost:5000';
+						}
+						const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+						return `${protocol}//${window.location.host}`;
+					})();
 					let socket = null;
 					let reconnectTimer = null;
 

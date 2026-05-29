@@ -12,6 +12,13 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
 const FIRMWARE_STATUSES = new Set(['IDLE', 'FALLING', 'IMPACT', 'MOTIONLESS', 'ALERT']);
+const FIRMWARE_STATUS_META = {
+    IDLE: { alertLevel: 'safe', riskWeight: 0, fall: false, safe: true },
+    FALLING: { alertLevel: 'warning', riskWeight: 18, fall: false, safe: false },
+    IMPACT: { alertLevel: 'warning', riskWeight: 28, fall: false, safe: false },
+    MOTIONLESS: { alertLevel: 'warning', riskWeight: 36, fall: false, safe: false },
+    ALERT: { alertLevel: 'danger', riskWeight: 46, fall: true, safe: false },
+};
 
 // =========================================================================
 // 1. KẾT NỐI CƠ SỞ DỮ LIỆU MYSQL POOL (Tối ưu hóa đa kết nối)
@@ -74,6 +81,22 @@ function normalizeFirmwareStatus(value) {
     return status;
 }
 
+function getFirmwareStatusMeta(value) {
+    const status = normalizeFirmwareStatus(value) || 'IDLE';
+    return FIRMWARE_STATUS_META[status] || FIRMWARE_STATUS_META.IDLE;
+}
+
+function applyFirmwareStatusToPatient(patient, firmwareStatus) {
+    const status = normalizeFirmwareStatus(firmwareStatus) || 'IDLE';
+    const meta = getFirmwareStatusMeta(status);
+
+    patient.status = status;
+    patient.fall = meta.fall;
+    patient.safe = meta.safe;
+
+    return meta;
+}
+
 
 // =========================================================================
 // 3. THUẬT TOÁN TÍNH TOÁN ĐIỂM RỦI RO & PHÂN CẤP TRẠNG THÁI (Business Logic)
@@ -84,38 +107,26 @@ function processPatientMetricsCalculation(patientId) {
     const hr = patient.heartRate;
     const spo2 = patient.spo2;
     const temp = patient.temp;
+    const isSignalLost = patient.signalLost;
+    const firmwareStatus = normalizeFirmwareStatus(patient.status) || 'IDLE';
+    const statusMeta = applyFirmwareStatusToPatient(patient, firmwareStatus);
     const isSafe = patient.safe;
     const isFall = patient.fall;
-    const isSignalLost = patient.signalLost;
 
     // Áp dụng chính xác công thức tính toán trọng số rủi ro lâm sàng
     let score = (100 - spo2) * 1.2 
                 + Math.abs(hr - 78) * 1.1 
                 + Math.max(temp - 37.3, 0) * 18 
-                + (isSafe ? 0 : 12) 
                 + (isSignalLost ? 24 : 0) 
-                + (isFall ? 40 : 0);
+                + statusMeta.riskWeight;
     
     // Giới hạn điểm số từ mức tối thiểu 4 đến tối đa 99 điểm
     patient.riskScore = Math.max(4, Math.min(99, Math.round(score)));
 
-    const firmwareStatus = normalizeFirmwareStatus(patient.status) || 'IDLE';
-    patient.status = firmwareStatus;
-
-    if (firmwareStatus === 'ALERT') {
-        patient.fall = true;
-        patient.safe = false;
-    } else if (firmwareStatus === 'IDLE') {
-        patient.fall = false;
-        patient.safe = true;
-    } else {
-        patient.safe = false;
-    }
-
     // Gán mức nguy cơ phục vụ màu giao diện và cảnh báo phụ trợ
-    if (firmwareStatus === 'ALERT' || isFall || isSignalLost || spo2 < 92 || hr > 125) {
+    if (statusMeta.alertLevel === 'danger' || isFall || isSignalLost || spo2 < 92 || hr > 125) {
         patient.alertLevel = 'danger';
-    } else if (firmwareStatus !== 'IDLE' || !isSafe || spo2 < 94 || hr > 110 || hr < 55 || temp > 37.8) {
+    } else if (statusMeta.alertLevel !== 'safe' || !isSafe || spo2 < 94 || hr > 110 || hr < 55 || temp > 37.8) {
         patient.alertLevel = 'warning';
     } else {
         patient.alertLevel = 'safe';
@@ -258,21 +269,12 @@ mqttClient.on('message', (topic, message) => {
                     console.log(`🔍 Trạng thái lạ: ${rawText}`);
                     return;
                 }
-                patientsState[patientId].status = normalizedStatus;
+                applyFirmwareStatusToPatient(patientsState[patientId], normalizedStatus);
                 patientsState[patientId].statusHistory = Array.isArray(patientsState[patientId].statusHistory) ? patientsState[patientId].statusHistory : [];
                 patientsState[patientId].statusHistory = [
                     ...patientsState[patientId].statusHistory,
                     { status: normalizedStatus, at: new Date().toISOString() }
                 ].slice(-25);
-                if (normalizedStatus === 'ALERT') {
-                    patientsState[patientId].fall = true;
-                    patientsState[patientId].safe = false;
-                } else if (normalizedStatus === 'IDLE') {
-                    patientsState[patientId].fall = false;
-                    patientsState[patientId].safe = true;
-                } else {
-                    patientsState[patientId].safe = false;
-                }
                 break;
             case 'signal_lost':
                 if (!Number.isFinite(rawValue)) return;
