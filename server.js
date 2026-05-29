@@ -320,9 +320,10 @@ const mqttClient = mqtt.connect(brokerUrl, mqttOptions);
 mqttClient.on('connect', () => {
     console.log('📡 Đã thiết lập liên kết thành công với HiveMQ Broker!');
     
-    // Lắng nghe tất cả dữ liệu sinh hiệu phát ra từ mạng lưới phần cứng thông qua wildcard (+)
-    // Cấu trúc Topic chuẩn: medpulse/health/{patient_id}/{metric}
-    mqttClient.subscribe('medpulse/health/+/+');
+    // Đổi thành đường ống độc quyền "medpulse_duy" để lọc sạch người lạ
+    // Sử dụng duy nhất 1 dấu wildcard (+) ở giữa cho patient_id, đuôi cố định là /vitals
+    mqttClient.subscribe('medpulse_duy/+/vitals');
+    console.log('📥 Đã Đăng ký lắng nghe Topic: medpulse_duy/+/vitals');
 });
 
 mqttClient.on('error', (err) => {
@@ -332,91 +333,57 @@ mqttClient.on('error', (err) => {
 mqttClient.on('message', (topic, message) => {
     try {
         const parts = topic.split('/');
-        if (parts.length < 4 || parts[0] !== 'medpulse' || parts[1] !== 'health') {
+        if (parts.length !== 3 || parts[0] !== 'medpulse_duy' || parts[2] !== 'vitals') {
             return;
         }
 
-        const patientId = parts[2];  // Ví dụ: RFID-1001
-        const metric = parts[3];     // Ví dụ: heart_rate, spo2, temp, fall, safe, battery, rssi
-        const rawText = message.toString().trim();
-        const rawValue = normalizeFiniteNumber(rawText);
+        const patientId = parts[1];
+        const liveData = JSON.parse(message.toString().trim());
 
         ensurePatientState(patientId);
         lastSeenByPatient.set(patientId, Date.now());
 
-        // Kiểm tra xem ID bệnh nhân nhận được có nằm trong danh mục quản lý hay không
         if (!patientsState[patientId]) {
-            console.warn(`⚠️ Nhận dữ liệu từ thiết bị lạ chưa định danh: ${patientId}`);
+            console.warn(`⚠️ Nhận dữ liệu từ thiết bị lạ chưa định danh trong hệ thống: ${patientId}`);
             return;
         }
 
-        // Cập nhật giá trị thô tương ứng vào bộ nhớ đệm dựa vào metric định tuyến
-        switch(metric) {
-            case 'heart_rate':
-                if (!Number.isFinite(rawValue)) return;
-                patientsState[patientId].heartRate = Math.round(rawValue);
-                break;
-            case 'spo2':
-                if (!Number.isFinite(rawValue)) return;
-                patientsState[patientId].spo2 = Math.round(rawValue);
-                break;
-            case 'temp':
-                if (!Number.isFinite(rawValue)) return;
-                patientsState[patientId].temp = Number(rawValue.toFixed(1));
-                break;
-            case 'battery':
-                if (!Number.isFinite(rawValue)) return;
-                if (rawValue < 0 || rawValue > 100) return;
-                patientsState[patientId].battery = Number(rawValue.toFixed(1));
-                break;
-            case 'rssi':
-                if (!Number.isFinite(rawValue)) return;
-                patientsState[patientId].rssi = Math.round(rawValue);
-                break;
-            case 'fall':
-                if (!Number.isFinite(rawValue)) return;
-                if (!syncFallSafeState(patientsState[patientId], metric, rawValue)) {
-                    return;
-                }
-                break;
-            case 'safe':
-                if (!Number.isFinite(rawValue)) return;
-                if (!syncFallSafeState(patientsState[patientId], metric, rawValue)) {
-                    return;
-                }
-                break;
-            case 'status':
-                const normalizedStatus = normalizeFirmwareStatus(rawText);
-                if (!normalizedStatus) {
-                    console.log(`🔍 Trạng thái lạ: ${rawText}`);
-                    return;
-                }
-                syncFallSafeState(patientsState[patientId], metric, normalizedStatus);
-                patientsState[patientId].statusHistory = Array.isArray(patientsState[patientId].statusHistory) ? patientsState[patientId].statusHistory : [];
-                patientsState[patientId].statusHistory = [
-                    ...patientsState[patientId].statusHistory,
-                    { status: normalizedStatus, at: new Date().toISOString() }
-                ].slice(-25);
-                break;
-            case 'signal_lost':
-                if (!Number.isFinite(rawValue)) return;
-                patientsState[patientId].signalLost = (rawValue === 1);
-                if (rawValue === 1) {
-                    patientsState[patientId].safe = false;
-                } else if (rawValue === 0) {
-                    patientsState[patientId].safe = true;
-                }
-                break;
-            default:
-                console.log(`🔍 Metric lạ: ${metric}`);
-                return;
+        // 1. ĐỒNG BỘ DỮ LIỆU VÀO RAM STATE
+        if (Number.isFinite(liveData.heartRate)) patientsState[patientId].heartRate = Math.round(liveData.heartRate);
+        if (Number.isFinite(liveData.spo2)) patientsState[patientId].spo2 = Math.round(liveData.spo2);
+        if (Number.isFinite(liveData.temp)) patientsState[patientId].temp = Number(liveData.temp.toFixed(1));
+        if (Number.isFinite(liveData.battery)) patientsState[patientId].battery = Number(liveData.battery.toFixed(1));
+
+        patientsState[patientId].signalLost = (liveData.signalLost === true || liveData.signalLost === 1);
+
+        const fwStatus = liveData.firmwareStatus || 'IDLE';
+        const normalizedStatus = normalizeFirmwareStatus(fwStatus);
+        
+        if (normalizedStatus) {
+            syncFallSafeState(patientsState[patientId], 'status', normalizedStatus);
+            patientsState[patientId].statusHistory = Array.isArray(patientsState[patientId].statusHistory) ? patientsState[patientId].statusHistory : [];
+            patientsState[patientId].statusHistory = [
+                ...patientsState[patientId].statusHistory,
+                { status: normalizedStatus, at: new Date().toISOString() }
+            ].slice(-25);
         }
 
-        // Thực hiện tính toán tập trung Điểm rủi ro & Xác định trạng thái màu sắc hệ thống
-        publishPatientUpdate(patientId);
+        // 2. TÍNH TOÁN RỦI RO, GỬI WEB DASHBOARD & TỰ ĐỘNG GHI VÀO DB (CHỈ GHI KHI KHÔNG MẤT TÍN HIỆU)
+        if (!patientsState[patientId].signalLost) {
+            publishPatientUpdate(patientId); // Hàm này bên trong đã có lệnh gọi saveVitalsToDatabase rồi nhé!
+            console.log(`💾 [MedPulse] Đã kích hoạt tiến trình cập nhật dữ liệu trực tuyến cho: ${patientId}`);
+        } else {
+            // Nếu mất tín hiệu hoặc checkout rời giường, chỉ đẩy trạng thái lên Web, không ghi log sinh hiệu trống vào DB
+            const updatedPatientData = processPatientMetricsCalculation(patientId);
+            broadcastToDashboards({
+                type: 'PATIENT_UPDATE',
+                data: updatedPatientData
+            });
+            console.log(`📡 [Mất tín hiệu/Rời giường] Chỉ cập nhật trạng thái lên Web Dashboard cho: ${patientId}`);
+        }
 
     } catch (error) {
-        console.error('❌ Lỗi xử lý gói tin MQTT:', error.message);
+        console.error('❌ Lỗi xử lý cấu trúc gói tin JSON MQTT:', error.message);
     }
 });
 
