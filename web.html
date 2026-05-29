@@ -198,174 +198,11 @@
 			soundEnabled: true,
 		};
 
-		const patientPool = [
-			{ id: 'RFID-1001', name: 'Nguyễn Thị Lan', room: 'A-203', age: 78, gender: 'Nữ' },
-			{ id: 'RFID-1002', name: 'Trần Văn Minh', room: 'A-101', age: 81, gender: 'Nam' },
-			{ id: 'RFID-1003', name: 'Phạm Thị Hạnh', room: 'B-205', age: 74, gender: 'Nữ' },
-			{ id: 'RFID-1004', name: 'Lê Quốc Huy', room: 'B-112', age: 69, gender: 'Nam' },
-			{ id: 'RFID-1005', name: 'Võ Thị Mai', room: 'C-301', age: 83, gender: 'Nữ' },
-			{ id: 'RFID-1006', name: 'Đặng Văn Sơn', room: 'C-120', age: 76, gender: 'Nam' },
-			{ id: 'RFID-1007', name: 'Bùi Thị Phương', room: 'D-011', age: 71, gender: 'Nữ' },
-			{ id: 'RFID-1008', name: 'Hoàng Văn Phúc', room: 'D-210', age: 79, gender: 'Nam' },
-			{ id: 'RFID-1009', name: 'Ngô Thị Thu', room: 'E-018', age: 67, gender: 'Nữ' },
-			{ id: 'RFID-1010', name: 'Phan Văn Long', room: 'E-220', age: 85, gender: 'Nam' },
-			{ id: 'RFID-1011', name: 'Dương Thị Yến', room: 'F-107', age: 73, gender: 'Nữ' },
-			{ id: 'RFID-1012', name: 'Tạ Văn Khải', room: 'F-306', age: 77, gender: 'Nam' },
-			{ id: 'RFID-1013', name: 'Mai Thị Ngọc', room: 'G-012', age: 68, gender: 'Nữ' },
-			{ id: 'RFID-1014', name: 'Hồ Văn An', room: 'G-245', age: 82, gender: 'Nam' },
-			{ id: 'RFID-1015', name: 'Lý Thị Thanh', room: 'H-055', age: 75, gender: 'Nữ' },
-			{ id: 'RFID-1016', name: 'Nguyễn Văn Tâm', room: 'H-240', age: 86, gender: 'Nam' },
-		];
+		let patients = [];
 
-		function rand(min, max) {
-			return Math.random() * (max - min) + min;
-		}
-
-		function clamp(value, min, max) {
-			return Math.max(min, Math.min(max, value));
-		}
-
-		function formatTime(date) {
-			return new Intl.DateTimeFormat('vi-VN', {
-				hour: '2-digit',
-				minute: '2-digit',
-				second: '2-digit',
-			}).format(date);
-		}
-
-		function formatDateTime(date) {
-			return new Intl.DateTimeFormat('vi-VN', {
-				day: '2-digit',
-				month: '2-digit',
-				hour: '2-digit',
-				minute: '2-digit',
-			}).format(date);
-		}
-
-		function formatRelative(minutesAgo) {
-			if (minutesAgo < 1) return 'vừa xong';
-			if (minutesAgo < 60) return `${minutesAgo} phút trước`;
-			const hours = Math.floor(minutesAgo / 60);
-			return `${hours} giờ trước`;
-		}
-
-		function createHistorySeries(base, spread, points = 30, wiggle = 1.6) {
-			const series = [];
-			let value = base;
-			for (let index = 0; index < points; index += 1) {
-				value += rand(-wiggle, wiggle);
-				series.push(Number(clamp(value + rand(-spread, spread), base - spread * 1.5, base + spread * 1.5).toFixed(1)));
-			}
-			return series;
-		}
-
-		function buildMockPatients() {
-			const now = new Date();
-			return patientPool.map((profile, index) => {
-				const safe = Math.random() > 0.2;
-				const heartRate = Math.round(rand(62, 96));
-				const spo2 = Math.round(rand(94, 99));
-				const temp = Number(rand(36.2, 37.8).toFixed(1));
-				const battery = Math.round(rand(18, 100));
-				const rssi = Math.round(rand(-84, -46));
-				const riskScore = Math.round(rand(18, 92));
-				const fall = Math.random() < 0.09;
-				const signalLost = Math.random() < 0.05;
-				const status = fall ? 'ALERT' : signalLost ? 'MOTIONLESS' : safe ? 'IDLE' : (index % 3 === 0 ? 'FALLING' : index % 3 === 1 ? 'IMPACT' : 'MOTIONLESS');
-				const alert = status !== 'IDLE' || spo2 < 94 || heartRate > 110 || heartRate < 55;
-				return {
-					...profile,
-					index,
-					avatar: profile.name.split(' ').slice(-2).map((part) => part[0]).join(''),
-					heartRate,
-					spo2,
-					temp,
-					safe,
-					battery,
-					rssi,
-					ble: signalLost ? 'Mất tín hiệu' : 'Ổn định',
-					kiosk: `Kiosk ${String(1 + (index % 5)).padStart(2, '0')}`,
-					zone: safe ? 'Within zone' : 'Alert zone',
-					alert,
-					fall,
-					status,
-					signalLost,
-					lastUpdate: new Date(now.getTime() - Math.round(rand(0, 9)) * 60_000),
-					history: {
-						heartRate: createHistorySeries(heartRate, 12),
-						spo2: createHistorySeries(spo2, 2.5),
-						temp: createHistorySeries(temp, 0.5),
-					},
-					checkins: [
-						{ type: 'Check-in', time: new Date(now.getTime() - rand(90, 540) * 60_000), place: profile.room },
-						{ type: 'Medication', time: new Date(now.getTime() - rand(30, 240) * 60_000), place: 'Nurse station' },
-						{ type: 'Check-out', time: new Date(now.getTime() - rand(10, 60) * 60_000), place: profile.room },
-					],
-					timeline: [
-						{ label: 'Theo dõi vitals', time: new Date(now.getTime() - rand(8, 25) * 60_000), note: 'Sensor hoạt động bình thường' },
-						{ label: alert ? 'Cảnh báo' : 'Đánh giá', time: new Date(now.getTime() - rand(2, 12) * 60_000), note: alert ? 'Yêu cầu y tá kiểm tra' : 'Không ghi nhận bất thường' },
-						{ label: 'Cập nhật', time: new Date(now.getTime() - rand(0, 3) * 60_000), note: 'Dữ liệu đồng bộ về dashboard' },
-					],
-					riskScore,
-				};
-			});
-		}
-
-		let patients = buildMockPatients();
-		state.selectedPatientId = patients[0].id;
-
-		function updateVitals() {
-			patients = patients.map((patient, index) => {
-				const drift = index % 3 === 0 ? rand(-4, 5) : rand(-2.5, 2.5);
-				const heartRate = Math.round(clamp(patient.heartRate + drift, 48, 146));
-				const spo2 = Math.round(clamp(patient.spo2 + rand(-1, 1), 87, 100));
-				const temp = Number(clamp(patient.temp + rand(-0.2, 0.2), 35.8, 38.7).toFixed(1));
-				const battery = Math.round(clamp(patient.battery - rand(0, 0.8), 5, 100));
-				const safe = Math.random() > 0.16;
-				const signalLost = Math.random() < 0.03 ? !patient.signalLost : patient.signalLost && Math.random() < 0.6;
-				const fall = Math.random() < 0.03 ? true : patient.fall && Math.random() < 0.82;
-				const status = fall ? 'ALERT' : signalLost ? 'MOTIONLESS' : safe ? 'IDLE' : (patient.status === 'IDLE' ? 'FALLING' : patient.status === 'FALLING' ? 'IMPACT' : patient.status === 'IMPACT' ? 'MOTIONLESS' : 'ALERT');
-				const alert = status !== 'IDLE' || signalLost || spo2 < 94 || heartRate > 112 || heartRate < 54 || temp > 37.8;
-				const riskScore = clamp(Math.round((100 - spo2) * 1.2 + Math.abs(heartRate - 78) * 1.1 + Math.max(temp - 37.3, 0) * 18 + (safe ? 0 : 12) + (signalLost ? 24 : 0) + (fall ? 40 : 0)), 4, 99);
-				const updatedHistory = {
-					heartRate: [...patient.history.heartRate.slice(1), heartRate],
-					spo2: [...patient.history.spo2.slice(1), spo2],
-					temp: [...patient.history.temp.slice(1), temp],
-				};
-				return {
-					...patient,
-					heartRate,
-					spo2,
-					temp,
-					battery,
-					safe,
-					signalLost,
-					fall,
-					alert,
-					status,
-					zone: safe ? 'Within zone' : 'Alert zone',
-					ble: signalLost ? 'Mất tín hiệu' : battery < 20 ? 'Pin yếu' : 'Ổn định',
-					rssi: Math.round(clamp(patient.rssi + rand(-2, 2), -90, -38)),
-					lastUpdate: new Date(),
-					history: updatedHistory,
-					riskScore,
-					timeline: [
-						...patient.timeline.slice(0, 2),
-						{ label: 'Dữ liệu đồng bộ', time: new Date(), note: 'Update realtime từ thiết bị đeo' },
-					],
-				};
-			});
-
-			state.mqttStatus = Math.random() > 0.06 ? 'connected' : 'degraded';
-			state.wifiStatus = Math.random() > 0.04 ? 'stable' : 'unstable';
-			state.kioskStatus = Math.random() > 0.05 ? 'online' : 'warning';
-
-			const criticalPatients = patients.filter((patient) => patient.fall || patient.signalLost || patient.spo2 < 92 || patient.heartRate > 125);
-			if (criticalPatients.length && state.soundEnabled) {
-				enqueueAlert(criticalPatients[0], 'critical', { showModal: false, cooldownMs: 45000 });
-			}
-			render();
-		}
+		// Hàm tiện ích (dùng cho biểu đồ & UI, không còn sinh dữ liệu ảo)
+		function rand(min, max) { return Math.random() * (max - min) + min; }
+		function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
 
 		function enqueueAlert(patient, type, options = {}) {
 			const { showModal = true, cooldownMs = 0 } = options;
@@ -627,7 +464,7 @@
 								</div>
 								<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 									${[
-										{ title: 'Bệnh nhân realtime', value: '16', desc: '10-20 patient mock data', tone: 'brand' },
+										{ title: 'Bệnh nhân realtime', value: 'Live', desc: 'Kết nối từ RFID + Cloud', tone: 'brand' },
 										{ title: 'Cảnh báo khẩn', value: '3', desc: 'Fall / SpO₂ / signal', tone: 'red' },
 										{ title: 'MQTT latency', value: '120ms', desc: 'Stable channel', tone: 'mint' },
 										{ title: 'Kiosk online', value: '98.4%', desc: 'Nurse stations healthy', tone: 'amber' },
@@ -648,9 +485,7 @@
 									<button data-action="show-login" class="rounded-2xl bg-gradient-to-r from-brand-500 to-cyan-400 px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:-translate-y-0.5">
 										Trải nghiệm dashboard
 									</button>
-									<button data-action="switch-view" data-view="ai" class="rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-										Xem AI Analysis
-									</button>
+	
 								</div>
 							</section>
 
@@ -805,8 +640,6 @@
 				['dashboard', 'Tổng quan', 'layout-dashboard'],
 				['patients', 'Bệnh nhân', 'users'],
 				['detail', 'Chi tiết bệnh nhân', 'stethoscope'],
-				['map', 'Bản đồ khu vực', 'map-pinned'],
-				['ai', 'AI Analysis', 'brain-circuit'],
 				['history', 'Lịch sử dữ liệu', 'calendar-clock'],
 				['settings', 'Thiết lập', 'settings-2'],
 			];
@@ -898,15 +731,40 @@
 		}
 
 		function renderOverview() {
+			if (patients.length === 0) {
+				return `
+					<div class="flex min-h-[60vh] flex-col items-center justify-center gap-6 animate-slideIn">
+						<div class="flex h-24 w-24 items-center justify-center rounded-[34px] bg-gradient-to-br from-brand-500 to-cyan-400 text-white shadow-glow">
+							<i data-lucide="scan-line" class="h-12 w-12"></i>
+						</div>
+						<div class="text-center">
+							<div class="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Hệ thống trực tuyến</div>
+							<div class="mt-3 max-w-md text-base leading-7 text-slate-500 dark:text-slate-400">Thiết bị sẵn sàng. Vui lòng quẹt thẻ RFID trên mạch ESP32 để khởi tạo trạm giám sát bệnh nhân.</div>
+						</div>
+						<div class="flex flex-wrap items-center justify-center gap-3">
+							<div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+								<span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>WebSocket ${state.mqttStatus === 'connected' ? 'Đã kết nối' : 'Đang kết nối...'}
+							</div>
+							<div class="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-300">
+								<i data-lucide="wifi" class="h-4 w-4"></i>${state.wifiStatus === 'stable' ? 'Wi-Fi ổn định' : 'Wi-Fi yếu'}
+							</div>
+						</div>
+					</div>
+				`;
+			}
 			const safeCount = patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length;
 			const warningCount = patients.filter((patient) => isTransitionFirmwareStatus(patient.status)).length;
 			const dangerCount = patients.filter((patient) => isCriticalFirmwareStatus(patient.status)).length;
 			const fallCount = patients.filter((patient) => isCriticalFirmwareStatus(patient.status) || patient.fall).length;
-			const avgHeart = Math.round(patients.reduce((sum, patient) => sum + patient.heartRate, 0) / patients.length);
-			const avgTemp = (patients.reduce((sum, patient) => sum + patient.temp, 0) / patients.length).toFixed(1);
-			const avgSpO2 = Math.round(patients.reduce((sum, patient) => sum + patient.spo2, 0) / patients.length);
-			const heartSeries = Array.from({ length: 18 }, (_, index) => Math.round(avgHeart + Math.sin((index / 17) * Math.PI * 2) * 7 + rand(-3, 3)));
-			const tempSeries = Array.from({ length: 18 }, (_, index) => Number((Number(avgTemp) + Math.sin((index / 17) * Math.PI * 2) * 0.18 + rand(-0.08, 0.08)).toFixed(1)));
+			const avgHeart = patients.length ? Math.round(patients.reduce((sum, patient) => sum + patient.heartRate, 0) / patients.length) : 0;
+			const avgTemp = patients.length ? (patients.reduce((sum, patient) => sum + patient.temp, 0) / patients.length).toFixed(1) : '0.0';
+			const avgSpO2 = patients.length ? Math.round(patients.reduce((sum, patient) => sum + patient.spo2, 0) / patients.length) : 0;
+			const heartSeries = patients.length
+				? patients.reduce((acc, p) => p.history?.heartRate?.forEach((v, i) => { acc[i] = (acc[i] || 0) + v / patients.length; }) || acc, Array(18).fill(0)).map(Math.round)
+				: Array(18).fill(0);
+			const tempSeries = patients.length
+				? patients.reduce((acc, p) => p.history?.temp?.forEach((v, i) => { acc[i] = (acc[i] || 0) + v / patients.length; }) || acc, Array(18).fill(0)).map(v => Number(v.toFixed(1)))
+				: Array(18).fill(0);
 			const alertPatients = patients.filter((patient) => !isNormalFirmwareStatus(patient.status)).slice(0, 4);
 			const criticalItems = [
 				{ label: 'MQTT', value: state.mqttStatus === 'connected' ? 'Connected' : 'Degraded', tone: state.mqttStatus === 'connected' ? 'green' : 'amber' },
@@ -1014,6 +872,17 @@
 		}
 
 		function renderPatients() {
+			if (patients.length === 0) {
+				return `
+					<div class="flex min-h-[50vh] flex-col items-center justify-center gap-5 animate-slideIn">
+						<div class="flex h-20 w-20 items-center justify-center rounded-[30px] bg-slate-100 text-slate-400 dark:bg-slate-900"><i data-lucide="users" class="h-10 w-10"></i></div>
+						<div class="text-center">
+							<div class="text-2xl font-black text-slate-900 dark:text-white">Chưa có bệnh nhân nào</div>
+							<div class="mt-2 text-base text-slate-500 dark:text-slate-400">Hệ thống đang chờ tín hiệu RFID từ thiết bị ESP32.</div>
+						</div>
+					</div>
+				`;
+			}
 			const visible = getVisiblePatients();
 			const totalPages = Math.max(1, Math.ceil(visible.length / state.pageSize));
 			const page = Math.min(state.page, totalPages);
@@ -1256,209 +1125,12 @@
 			`;
 		}
 
-		function renderMap() {
-			const kiosks = [
-				{ name: 'Kiosk 01', x: 12, y: 16, color: 'bg-brand-500', patients: 3 },
-				{ name: 'Kiosk 02', x: 40, y: 14, color: 'bg-emerald-500', patients: 4 },
-				{ name: 'Kiosk 03', x: 67, y: 19, color: 'bg-cyan-500', patients: 2 },
-				{ name: 'Kiosk 04', x: 21, y: 59, color: 'bg-amber-500', patients: 3 },
-				{ name: 'Kiosk 05', x: 58, y: 62, color: 'bg-red-500', patients: 4 },
-			];
-			return `
-				<div class="space-y-6 animate-slideIn">
-					<div class="card rounded-[30px] p-5 shadow-soft">
-						<div class="flex items-center justify-between gap-4">
-							<div>
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Bản đồ khu vực</div>
-								<div class="mt-1 text-2xl font-black tracking-tight">Mock floor plan cho bệnh viện / viện dưỡng lão</div>
-							</div>
-							<div class="flex gap-2">
-								<button data-action="toggle-sound" class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Sound: ${state.soundEnabled ? 'On' : 'Off'}</button>
-								<button data-action="open-toast" class="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white dark:bg-white dark:text-slate-950">Realtime pulse</button>
-							</div>
-						</div>
-					</div>
-					<div class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-						<div class="card relative overflow-hidden rounded-[34px] p-6 shadow-soft">
-							<div class="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-brand-50/60 dark:from-slate-950 dark:via-slate-900 dark:to-brand-500/5"></div>
-							<div class="relative h-[620px] overflow-hidden rounded-[28px] border border-slate-200 bg-white/70 p-4 dark:border-slate-800 dark:bg-slate-950/70">
-								<div class="absolute inset-0 opacity-[0.08]" style="background-image:linear-gradient(to right, rgba(59,130,246,.8) 1px, transparent 1px), linear-gradient(to bottom, rgba(59,130,246,.8) 1px, transparent 1px); background-size: 28px 28px;"></div>
-								<div class="absolute left-[18%] top-[16%] h-[32%] w-[26%] rounded-[36px] border-2 border-dashed border-brand-300/70 bg-brand-50/50 dark:border-brand-500/40 dark:bg-brand-500/10"></div>
-								<div class="absolute right-[14%] top-[26%] h-[18%] w-[24%] rounded-[32px] border-2 border-dashed border-amber-300/70 bg-amber-50/60 dark:border-amber-500/40 dark:bg-amber-500/10"></div>
-								<div class="absolute right-[11%] bottom-[12%] h-[22%] w-[28%] rounded-[34px] border-2 border-dashed border-red-300/70 bg-red-50/60 dark:border-red-500/40 dark:bg-red-500/10"></div>
-								<div class="absolute left-[38%] top-[50%] h-[18%] w-[18%] rounded-[30px] border border-slate-200 bg-slate-100/60 dark:border-slate-700 dark:bg-slate-900/70"></div>
-								<div class="relative h-full">
-									${kiosks.map((kiosk) => `
-										<div class="absolute" style="top:${kiosk.y}%; left:${kiosk.x}%;">
-											<div class="flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
-												<div class="relative">
-													<div class="h-6 w-6 animate-ping rounded-full ${kiosk.color} opacity-30"></div>
-													<div class="absolute inset-0 h-6 w-6 rounded-full ${kiosk.color}"></div>
-												</div>
-												<div class="mt-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-center text-xs font-semibold shadow-soft dark:border-slate-800 dark:bg-slate-950">
-													<div class="font-black text-slate-900 dark:text-white">${kiosk.name}</div>
-													<div class="text-slate-500 dark:text-slate-400">${kiosk.patients} patients</div>
-												</div>
-											</div>
-										</div>
-									`).join('')}
-									${patients.filter((patient) => isCriticalFirmwareStatus(patient.status) || isTransitionFirmwareStatus(patient.status)).slice(0, 4).map((patient, index) => `
-										<div class="absolute" style="top:${20 + index * 12}%; left:${70 - index * 10}%;">
-												<div class="flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-lg ${isCriticalFirmwareStatus(patient.status) ? 'pulse-critical' : ''}">
-												<span class="h-2 w-2 rounded-full bg-white/90"></span>${patient.avatar} · ${patient.room}
-											</div>
-										</div>
-									`).join('')}
-									<div class="absolute left-6 top-6 rounded-full bg-white/80 px-3 py-2 text-xs font-semibold text-slate-500 shadow-soft dark:bg-slate-950/80 dark:text-slate-300">North wing</div>
-									<div class="absolute bottom-6 right-6 rounded-full bg-white/80 px-3 py-2 text-xs font-semibold text-slate-500 shadow-soft dark:bg-slate-950/80 dark:text-slate-300">Signal loss zone</div>
-								</div>
-							</div>
-						</div>
-						<div class="space-y-6">
-							<div class="card rounded-[30px] p-5 shadow-soft">
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Live zones</div>
-								<div class="mt-1 text-2xl font-black tracking-tight">Trạng thái sơ đồ khu vực</div>
-								<div class="mt-5 space-y-3">
-									${[
-										['Vùng an toàn', '86% active', 'mint'],
-										['Zone cảnh báo', '9% active', 'amber'],
-										['Zone tín hiệu yếu', '5% active', 'red'],
-									].map(([label, value, tone]) => `
-										<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
-											<div class="flex items-center justify-between gap-3">
-												<div class="font-semibold">${label}</div>
-												<div class="text-sm font-black ${tone === 'mint' ? 'text-emerald-600 dark:text-emerald-300' : tone === 'amber' ? 'text-amber-600 dark:text-amber-300' : 'text-red-600 dark:text-red-300'}">${value}</div>
-											</div>
-											<div class="mt-3">${progressBar(tone === 'mint' ? 86 : tone === 'amber' ? 9 : 5, 100, tone === 'mint' ? 'mint' : tone === 'amber' ? 'warning' : 'danger')}</div>
-										</div>
-									`).join('')}
-								</div>
-							</div>
-							<div class="card rounded-[30px] p-5 shadow-soft">
-								<div class="flex items-center justify-between">
-									<div>
-										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Kiosk overview</div>
-										<div class="mt-1 text-2xl font-black tracking-tight">Vị trí và tình trạng</div>
-									</div>
-									<i data-lucide="map" class="h-6 w-6 text-brand-500"></i>
-								</div>
-								<div class="mt-5 grid gap-3 sm:grid-cols-2">
-									${patients.slice(0, 6).map((patient) => `
-										<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
-											<div class="flex items-center gap-3">
-												<div class="h-11 w-11 rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-400 text-center text-sm font-black leading-10 text-white">${patient.avatar}</div>
-												<div>
-													<div class="font-bold">${patient.name}</div>
-													<div class="text-xs text-slate-500 dark:text-slate-400">${patient.kiosk} · ${patient.zone}</div>
-												</div>
-											</div>
-										</div>
-									`).join('')}
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			`;
-		}
-
-		function renderAi() {
-			const topRisk = [...patients].sort((left, right) => right.riskScore - left.riskScore).slice(0, 4);
-			const avgRisk = Math.round(patients.reduce((sum, patient) => sum + patient.riskScore, 0) / patients.length);
-			return `
-				<div class="space-y-6 animate-slideIn">
-					<div class="card rounded-[30px] p-5 shadow-soft">
-						<div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-							<div>
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">AI Analysis</div>
-								<div class="mt-1 text-3xl font-black tracking-tight">Phân tích xu hướng và dự đoán nguy cơ</div>
-							</div>
-							<div class="rounded-full bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">Risk avg ${avgRisk}/100</div>
-						</div>
-					</div>
-					<div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-						<div class="space-y-6">
-							<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-								${[
-									{ title: 'Need attention', value: `${topRisk.length}`, desc: 'Patients with elevated risk', tone: 'red', icon: 'brain-circuit' },
-									{ title: 'Trend signal', value: 'Upward', desc: 'Heart rate variance rising', tone: 'amber', icon: 'trending-up' },
-									{ title: 'Stable cohort', value: `${patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length}`, desc: 'Still within normal bands', tone: 'mint', icon: 'shield-check' },
-								].map((item) => `
-									<div class="card rounded-[28px] p-5 shadow-soft">
-										<div class="flex items-start justify-between gap-3">
-											<div>
-												<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${item.title}</div>
-												<div class="mt-2 text-3xl font-black ${item.tone === 'red' ? 'text-red-600 dark:text-red-300' : item.tone === 'amber' ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}">${item.value}</div>
-												<div class="mt-2 text-sm text-slate-500 dark:text-slate-400">${item.desc}</div>
-											</div>
-											${iconCircle(item.icon, item.tone)}
-										</div>
-									</div>
-								`).join('')}
-							</div>
-							<div class="grid gap-4 lg:grid-cols-2">
-								${chartCard('Trend: average risk', Array.from({ length: 18 }, (_, index) => Math.round(avgRisk + Math.sin(index / 3) * 8 + rand(-2, 2))), 'pts', 'text-red-600 dark:text-red-300', 'Prediction engine')}
-								${chartCard('Alert probability', Array.from({ length: 18 }, (_, index) => Math.round(clamp(18 + index * 2.2 + Math.sin(index / 2) * 6 + rand(-2, 3), 10, 99))), '%', 'text-amber-600 dark:text-amber-300', 'Forecast 24h')}
-							</div>
-							<div class="card rounded-[30px] p-5 shadow-soft">
-								<div class="flex items-center justify-between">
-									<div>
-										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">AI auto report</div>
-										<div class="mt-1 text-2xl font-black tracking-tight">Báo cáo tự động</div>
-									</div>
-									<button data-action="export-pdf" class="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white dark:bg-white dark:text-slate-950">Export PDF</button>
-								</div>
-								<div class="mt-5 grid gap-4 md:grid-cols-2">
-									<div class="rounded-[24px] bg-emerald-50 p-5 dark:bg-emerald-500/10">
-										<div class="text-sm font-bold text-emerald-700 dark:text-emerald-300">Positive insight</div>
-										<div class="mt-2 text-base leading-7 text-slate-700 dark:text-slate-200">Phần lớn bệnh nhân đang nằm trong ngưỡng an toàn; điều kiện hệ thống ổn định, phù hợp theo dõi ca đêm.</div>
-									</div>
-									<div class="rounded-[24px] bg-red-50 p-5 dark:bg-red-500/10">
-										<div class="text-sm font-bold text-red-700 dark:text-red-300">Action required</div>
-										<div class="mt-2 text-base leading-7 text-slate-700 dark:text-slate-200">3 bệnh nhân có nguy cơ cao do SpO₂ thấp, té ngã hoặc mất tín hiệu. Cần y tá kiểm tra trong 5 phút.</div>
-									</div>
-								</div>
-							</div>
-						</div>
-						<div class="space-y-6">
-							<div class="card rounded-[30px] p-5 shadow-soft">
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Patients needing attention</div>
-								<div class="mt-1 text-2xl font-black tracking-tight">Danh sách ưu tiên</div>
-								<div class="mt-5 space-y-3">
-									${topRisk.map((patient) => `
-										<button data-action="open-patient" data-id="${patient.id}" class="w-full rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-soft dark:border-slate-800 dark:bg-slate-950/50">
-											<div class="flex items-center justify-between gap-3">
-												<div>
-													<div class="font-bold">${patient.name}</div>
-													<div class="text-sm text-slate-500 dark:text-slate-400">Risk score ${patient.riskScore}</div>
-												</div>
-												<div class="text-right">
-													<div class="text-sm font-bold ${patient.riskScore > 75 ? 'text-red-600 dark:text-red-300' : 'text-amber-600 dark:text-amber-300'}">${firmwareStatusLabel(patient.status)}</div>
-													<div class="text-xs text-slate-500 dark:text-slate-400">${patient.kiosk}</div>
-												</div>
-											</div>
-											<div class="mt-4">${progressBar(patient.riskScore, 100, patient.riskScore > 75 ? 'danger' : 'warning')}</div>
-										</button>
-									`).join('')}
-								</div>
-							</div>
-							<div class="card rounded-[30px] p-5 shadow-soft">
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">AI recommendations</div>
-								<div class="mt-1 text-2xl font-black tracking-tight">Khuyến nghị tự động</div>
-								<div class="mt-5 space-y-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">1. Theo dõi riêng các bệnh nhân có <span class="font-bold text-red-600 dark:text-red-300">SpO₂ dưới 94%</span> trong ca hiện tại.</div>
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">2. Ưu tiên kiểm tra thiết bị đeo có RSSI thấp và pin dưới 20%.</div>
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">3. Gợi ý xác nhận khu vực nếu cảnh báo té ngã xuất hiện liên tiếp 2 lần.</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			`;
-		}
-
 		function renderHistory() {
-			const series = Array.from({ length: 24 }, (_, index) => Math.round(72 + Math.sin(index / 4) * 10 + rand(-4, 4)));
+			// Dùng lịch sử heartRate thật của tất cả bệnh nhân, nếu chưa có thì placeholder 0
+			const allHR = patients.flatMap(p => p.history?.heartRate || []);
+			const series = allHR.length >= 24
+				? allHR.slice(-24)
+				: [...Array(24 - allHR.length).fill(0), ...allHR];
 			return `
 				<div class="space-y-6 animate-slideIn">
 					<div class="card rounded-[30px] p-5 shadow-soft">
@@ -1726,8 +1398,6 @@
 				dashboard: renderOverview(),
 				patients: renderPatients(),
 				detail: renderPatientDetail(),
-				map: renderMap(),
-				ai: renderAi(),
 				history: renderHistory(),
 				settings: renderSettings(),
 			};
@@ -1850,7 +1520,7 @@
 						state.profileOpen = false;
 						state.notificationsOpen = false;
 						state.sidebarOpen = window.innerWidth >= 1024;
-						if (view === 'detail' && !state.selectedPatientId) state.selectedPatientId = patients[0].id;
+						if (view === 'detail' && !state.selectedPatientId && patients.length > 0) state.selectedPatientId = patients[0].id;
 						render();
 					}
 					if (action === 'open-patient' && id) {
@@ -1930,8 +1600,8 @@
 						if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
 							return 'ws://localhost:5000';
 						}
-						const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-						return `${protocol}//${window.location.host}`;
+						// Kết nối tới Backend Cloud trên Render
+						return 'wss://<medpulse-dashboard>.onrender.com';
 					})();
 					let socket = null;
 					let reconnectTimer = null;
@@ -1957,14 +1627,33 @@
             
             // 1. Đồng bộ ban đầu khi load trang
             if (rawPayload.type === 'INITIAL_SYNC') {
-                rawPayload.data.forEach(remotePatient => {
-                    const localPatient = patients.find(p => p.id === remotePatient.id);
-                    if (localPatient) {
-                        Object.assign(localPatient, remotePatient);
-                        // SỬA TẠI ĐÂY: Ép chuỗi chữ từ Backend thành đối tượng Date thực thụ
-                        localPatient.lastUpdate = new Date(remotePatient.lastUpdate);
-                    }
-                });
+                if (!rawPayload.data || rawPayload.data.length === 0) {
+                    // Chưa có bệnh nhân nào quẹt thẻ – hiển thị thông báo chờ
+                    patients = [];
+                    showToast(
+                        'Hệ thống trực tuyến',
+                        'Thiết bị sẵn sàng, vui lòng quẹt thẻ RFID để khởi tạo trạm giám sát...',
+                        'info'
+                    );
+                } else {
+                    rawPayload.data.forEach(remotePatient => {
+                        const existingIdx = patients.findIndex(p => p.id === remotePatient.id);
+                        const mapped = {
+                            ...remotePatient,
+                            avatar: (remotePatient.fullName || remotePatient.name || remotePatient.id)
+                                .split(' ').slice(-2).map(p => p[0]).join('').toUpperCase(),
+                            name: remotePatient.fullName || remotePatient.name || remotePatient.id,
+                            room: remotePatient.roomNumber || remotePatient.room || '---',
+                            lastUpdate: new Date(remotePatient.lastUpdate),
+                            history: remotePatient.history || { heartRate: [], spo2: [], temp: [] },
+                        };
+                        if (existingIdx !== -1) {
+                            Object.assign(patients[existingIdx], mapped);
+                        } else {
+                            patients.push(mapped);
+                        }
+                    });
+                }
                 render();
                 return;
             }
@@ -1972,40 +1661,72 @@
             // 2. Nhận cập nhật thời gian thực từ ESP32 gửi lên
             if (rawPayload.type === 'PATIENT_UPDATE') {
                 const liveData = rawPayload.data;
-								const firmwareStatus = normalizeFirmwareStatus(liveData.status);
+                const firmwareStatus = normalizeFirmwareStatus(liveData.status);
                 const index = patients.findIndex(p => p.id === liveData.id);
 
-                if (index !== -1) {
-                    const oldData = patients[index];
-
-                    // Cập nhật mảng lịch sử (Giữ lại tối đa 30 điểm gần nhất giống code gốc của bạn)
-                    const updatedHistory = {
-                        heartRate: [...oldData.history.heartRate.slice(1), liveData.heartRate],
-                        spo2: [...oldData.history.spo2.slice(1), liveData.spo2],
-                        temp: [...oldData.history.temp.slice(1), liveData.temp]
+                if (index === -1) {
+                    // ── Bệnh nhân MỚI: Quẹt thẻ lần đầu → Append dòng mới ──
+                    const newPatient = {
+                        ...liveData,
+                        id: liveData.id,
+                        name: liveData.fullName || liveData.name || liveData.id,
+                        room: liveData.roomNumber || liveData.room || '---',
+                        avatar: (liveData.fullName || liveData.name || liveData.id)
+                            .split(' ').slice(-2).map(p => p[0]).join('').toUpperCase(),
+                        status: firmwareStatus,
+                        lastUpdate: new Date(liveData.lastUpdate || Date.now()),
+                        history: { heartRate: [liveData.heartRate], spo2: [liveData.spo2], temp: [liveData.temp] },
+                        checkins: [{ type: 'Check-in', time: new Date(), place: liveData.roomNumber || liveData.room || '---' }],
+                        timeline: [{ label: 'Khởi tạo trạm', time: new Date(), note: 'Bệnh nhân quẹt thẻ RFID thành công' }],
+                        riskScore: liveData.riskScore || 0,
+                        alert: firmwareStatus !== 'IDLE',
+                        fall: firmwareStatus === 'ALERT',
+                        signalLost: !!liveData.signalLost,
+                        safe: firmwareStatus === 'IDLE',
+                        kiosk: liveData.kiosk || 'Kiosk 01',
+                        zone: firmwareStatus === 'IDLE' ? 'Within zone' : 'Alert zone',
+                        battery: liveData.battery || 100,
+                        rssi: liveData.rssi || -60,
+                        ble: liveData.signalLost ? 'Mất tín hiệu' : 'Ổn định',
+                        age: liveData.age || 0,
+                        gender: liveData.gender || '',
                     };
-
-                    // Ghi đè trạng thái sạch từ Backend
+                    patients.push(newPatient);
+                    showToast('Bệnh nhân mới', `${newPatient.name} – ${newPatient.room} vừa được kết nối.`, 'info');
+                    if (!state.selectedPatientId) state.selectedPatientId = newPatient.id;
+                } else {
+                    // ── Bệnh nhân ĐÃ CÓ: Chỉ cập nhật vitals, không tạo dòng mới ──
+                    const oldData = patients[index];
+                    const updatedHistory = {
+                        heartRate: [...(oldData.history?.heartRate || []).slice(-29), liveData.heartRate],
+                        spo2:      [...(oldData.history?.spo2 || []).slice(-29),      liveData.spo2],
+                        temp:      [...(oldData.history?.temp || []).slice(-29),      liveData.temp],
+                    };
                     patients[index] = {
                         ...oldData,
                         ...liveData,
-										status: firmwareStatus,
+                        name: liveData.fullName || liveData.name || oldData.name,
+                        room: liveData.roomNumber || liveData.room || oldData.room,
+                        status: firmwareStatus,
                         history: updatedHistory,
-                        // SỬA TẠI ĐÂY: Ép chuỗi chữ từ Backend thành đối tượng Date thực thụ
-                        lastUpdate: new Date(liveData.lastUpdate)
+                        lastUpdate: new Date(liveData.lastUpdate || Date.now()),
+                        alert: firmwareStatus !== 'IDLE' || !!liveData.signalLost,
+                        fall: firmwareStatus === 'ALERT',
+                        safe: firmwareStatus === 'IDLE',
+                        zone: firmwareStatus === 'IDLE' ? 'Within zone' : 'Alert zone',
+                        ble: liveData.signalLost ? 'Mất tín hiệu' : ((liveData.battery || oldData.battery) < 20 ? 'Pin yếu' : 'Ổn định'),
                     };
 
-                    // Kích hoạt còi và modal báo động khẩn cấp mặc định của bạn
-									if (firmwareStatus === 'ALERT') {
+                    if (firmwareStatus === 'ALERT') {
                         enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 20000 });
-									} else if (isTransitionFirmwareStatus(firmwareStatus)) {
-										enqueueAlert(patients[index], 'warning', { showModal: false, cooldownMs: 30000 });
-									} else if (liveData.signalLost) {
+                    } else if (isTransitionFirmwareStatus(firmwareStatus)) {
+                        enqueueAlert(patients[index], 'warning', { showModal: false, cooldownMs: 30000 });
+                    } else if (liveData.signalLost) {
                         enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 30000 });
                     }
-
-                    render();
                 }
+
+                render();
             }
         } catch (error) {
             console.error("❌ Lỗi xử lý WebSocket:", error);
