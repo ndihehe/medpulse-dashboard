@@ -387,15 +387,41 @@ function saveVitalsToDatabase(p) {
         p.riskScore      || 4,
     ];
 
-    db.query(query, values, (err) => {
-        if (err) {
-            console.error(` Lỗi lưu DB bệnh nhân ${p.id}:`, err.message);
-            // [FIX] In SQL để dễ debug trên Railway logs
-            console.error('   SQL values:', JSON.stringify(values));
-        } else {
-            console.log(` Đã ghi vitals_log cho ${p.id}`);
+    // THAY THẾ BẰNG ĐOẠN CODE NÀY:
+        db.query(query, values, (err, results) => {
+    if (err) {
+        // Nếu phát hiện mất kết nối
+        if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET') {
+            console.log(`🔄 Mất kết nối DB khi lưu dữ liệu cho ${values[0]}. Đang xin một kết nối mới để thử lại...`);
+            
+            // Ép Pool phải tạo hoặc cấp một kết nối mới hoàn toàn sạch sẽ
+            db.getConnection((connErr, connection) => {
+                if (connErr) {
+                    console.error(`❌ Không thể tạo kết nối mới cho ${values[0]}:`, connErr.message);
+                    return;
+                }
+                
+                // Dùng kết nối mới này để thực thi lại câu lệnh SQL
+                connection.query(query, values, (retryErr, retryResults) => {
+                    // Sau khi dùng xong phải giải phóng kết nối trả lại cho Pool
+                    connection.release(); 
+                    
+                    if (retryErr) {
+                        console.error(`❌ Thử lại bằng kết nối mới vẫn thất bại cho ${values[0]}:`, retryErr.message);
+                    } else {
+                        console.log(`✅ Thử lại THÀNH CÔNG bằng kết nối mới! Đã lưu dữ liệu cho: ${values[0]}`);
+                    }
+                });
+            });
+            return;
         }
-    });
+        
+        console.error(`❌ Lỗi lưu DB bệnh nhân ${values[0]}:`, err.message);
+        console.error('   SQL values:', JSON.stringify(values));
+        return;
+    }
+    console.log(`✅ Đã cập nhật + lưu DB thành công cho: ${values[0]}`);
+});
 }
 
 // =========================================================================
