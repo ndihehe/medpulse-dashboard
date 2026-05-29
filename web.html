@@ -672,7 +672,7 @@
 							<div class="flex items-center justify-between">
 								<div>
 									<div class="text-xs uppercase tracking-[0.24em] text-slate-400">Realtime</div>
-									<div class="mt-2 text-2xl font-black">${patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length}/${patients.length}</div>
+									<div class="mt-2 text-2xl font-black">${patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length}/${patients.length > 0 ? patients.length : '0'}</div>
 								</div>
 								<div class="rounded-2xl bg-white/10 p-3"><i data-lucide="radiation" class="h-6 w-6 text-cyan-300"></i></div>
 							</div>
@@ -1502,12 +1502,12 @@
 					if (action === 'demo-login') {
 						state.authed = true;
 						state.screen = 'app';
-						state.loading = false;
+						state.loading = true;
 						state.profileOpen = false;
 						state.notificationsOpen = false;
-						showToast('Chào mừng', 'Đăng nhập thành công vào MedPulse.', 'info');
-						initMedPulseWebSocket();
 						render();
+						// Fetch real patient data from database before initializing WebSocket
+						fetchInitialPatients();
 					}
 					if (action === 'fill-demo') {
 						state.inputName = 'nurse.le';
@@ -1628,11 +1628,89 @@
 
 
 		// WebSocket globals (phải ở scope ngoài để setInterval truy cập được)
+		const BACKEND_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+			? 'http://localhost:5000'
+			: 'https://medpulse-dashboard.onrender.com';
 		const BACKEND_WS_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 			? 'ws://localhost:5000'
 			: 'wss://medpulse-dashboard.onrender.com';
 		let socket = null;
 		let reconnectTimer = null;
+
+		// ===== FUNCTION: Fetch initial patient data from HTTP API =====
+		function isEmptyPatient(patient) {
+			// Check if patient has meaningful data (not just default/mock data)
+			const hasName = patient.name && patient.name.trim() !== '' && !patient.name.startsWith('RFID-');
+			const hasVitals = patient.heartRate !== 75 || patient.spo2 !== 98 || patient.temp !== 36.5;
+			const hasActivity = patient.alert || patient.signalLost || patient.status !== 'IDLE';
+			return !hasName && !hasVitals && !hasActivity;
+		}
+
+		async function fetchInitialPatients() {
+			try {
+				console.log('📥 Fetching initial patient data from API...');
+				const response = await fetch(`${BACKEND_BASE_URL}/api/patients`);
+				if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+				const allPatientsFromBackend = await response.json();
+				console.log('📋 Raw backend data:', allPatientsFromBackend);
+
+				// Filter out empty/mock patients - keep only those with actual data
+				const activePatients = allPatientsFromBackend.filter(p => !isEmptyPatient(p));
+				console.log(`✅ Filtered ${activePatients.length} active patients from ${allPatientsFromBackend.length} total`);
+
+				// Map backend data to UI format
+				patients = activePatients.map(remotePatient => {
+					const patientName = remotePatient.fullName || remotePatient.name || remotePatient.id || 'Unknown';
+					return {
+						...remotePatient,
+						avatar: patientName.split(' ').slice(-2).map(p => p[0]).join('').toUpperCase() || 'P',
+						name: patientName,
+						room: remotePatient.roomNumber || remotePatient.room || '---',
+						kiosk: remotePatient.kiosk || 'Kiosk 01',
+						status: remotePatient.status || remotePatient.current_status || 'IDLE',
+						alertLevel: remotePatient.alertLevel || 'safe',
+						lastUpdate: new Date(remotePatient.lastUpdate || Date.now()),
+						history: remotePatient.history || { heartRate: [remotePatient.heartRate || 75], spo2: [remotePatient.spo2 || 98], temp: [remotePatient.temp || 36.5] },
+						checkins: [{ type: 'Check-in', time: new Date(remotePatient.lastUpdate || Date.now()), place: remotePatient.room || 'Room N/A' }],
+						timeline: [{ label: 'Hệ thống khởi tạo', time: new Date(remotePatient.lastUpdate || Date.now()), note: 'Bệnh nhân được tải từ cơ sở dữ liệu' }],
+						riskScore: remotePatient.riskScore || 4,
+						alert: (remotePatient.status || remotePatient.current_status || 'IDLE') !== 'IDLE',
+						fall: remotePatient.fall || false,
+						signalLost: remotePatient.signalLost || false,
+						safe: remotePatient.safe !== false,
+						zone: (remotePatient.status || remotePatient.current_status || 'IDLE') === 'IDLE' ? 'Within zone' : 'Alert zone',
+						battery: remotePatient.battery || 100,
+						rssi: remotePatient.rssi || -60,
+						ble: remotePatient.signalLost ? 'Mất tín hiệu' : (remotePatient.battery < 20 ? 'Pin yếu' : 'Ổn định'),
+						age: remotePatient.age || 0,
+						gender: remotePatient.gender || '',
+						bloodType: remotePatient.bloodType || 'O+',
+					};
+				});
+
+				console.log(`🟢 Loaded ${patients.length} patients into dashboard`);
+				state.loading = false;
+
+				if (patients.length === 0) {
+					showToast('Hệ thống trực tuyến', 'Chưa có bệnh nhân. Vui lòng quẹt thẻ RFID để khởi tạo.', 'info');
+				} else {
+					showToast('Chào mừng', `Đăng nhập thành công! Đã tải ${patients.length} bệnh nhân từ cơ sở dữ liệu.`, 'info');
+					if (!state.selectedPatientId && patients.length > 0) {
+						state.selectedPatientId = patients[0].id;
+					}
+				}
+
+				render();
+				// Initialize WebSocket after fetching initial data
+				initMedPulseWebSocket();
+			} catch (error) {
+				console.error('❌ Lỗi khi tải dữ liệu bệnh nhân:', error.message);
+				showToast('Lỗi kết nối', 'Không thể tải dữ liệu từ server. ' + error.message, 'danger');
+				state.loading = false;
+				render();
+			}
+		}
 
 		function initMedPulseWebSocket() {
 			if (socket && socket.readyState !== WebSocket.CLOSED) return;
@@ -1652,25 +1730,32 @@
 				try {
 					const rawPayload = JSON.parse(event.data);
 
-					// 1. Đồng bộ ban đầu khi load trang
+// 1. Đồng bộ ban đầu khi load trang (via WebSocket)
 					if (rawPayload.type === 'INITIAL_SYNC') {
+						// Filter out empty patients from WebSocket sync
 						if (!rawPayload.data || rawPayload.data.length === 0) {
-						patients = [];
-						showToast('Hệ thống trực tuyến', 'Thiết bị sẵn sàng, vui lòng quẹt thẻ RFID để khởi tạo trạm giám sát...', 'info');
+							console.log('ℹ️  WebSocket INITIAL_SYNC: No patients data received');
 						} else {
-						rawPayload.data.forEach(remotePatient => {
-						const existingIdx = patients.findIndex(p => p.id === remotePatient.id);
-						const mapped = {
-						...remotePatient,
-						avatar: (remotePatient.fullName || remotePatient.name || remotePatient.id).split(' ').slice(-2).map(p => p[0]).join('').toUpperCase(),
-						name: remotePatient.fullName || remotePatient.name || remotePatient.id,
-						room: remotePatient.roomNumber || remotePatient.room || '---',
-						lastUpdate: new Date(remotePatient.lastUpdate),
-						history: remotePatient.history || { heartRate: [], spo2: [], temp: [] },
-						};
-						if (existingIdx !== -1) Object.assign(patients[existingIdx], mapped);
-						else patients.push(mapped);
-						});
+							const validPatients = rawPayload.data.filter(p => !isEmptyPatient(p));
+							console.log(`📡 WebSocket INITIAL_SYNC: Received ${validPatients.length} active patients from ${rawPayload.data.length} total`);
+							
+							validPatients.forEach(remotePatient => {
+								const existingIdx = patients.findIndex(p => p.id === remotePatient.id);
+								const patientName = remotePatient.fullName || remotePatient.name || remotePatient.id;
+								const mapped = {
+									...remotePatient,
+									avatar: patientName.split(' ').slice(-2).map(p => p[0]).join('').toUpperCase() || 'P',
+									name: patientName,
+									room: remotePatient.roomNumber || remotePatient.room || '---',
+									lastUpdate: new Date(remotePatient.lastUpdate || Date.now()),
+									history: remotePatient.history || { heartRate: [], spo2: [], temp: [] },
+								};
+								if (existingIdx !== -1) {
+									Object.assign(patients[existingIdx], mapped);
+								} else {
+									patients.push(mapped);
+								}
+							});
 						}
 						render();
 						return;
