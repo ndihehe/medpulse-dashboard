@@ -440,126 +440,102 @@
 		function renderLanding() {
 			return `
 				<div class="relative min-h-screen overflow-hidden">
-					<div class="absolute inset-0 soft-grid opacity-[0.14]"></div>
+					<div class="absolute inset-0 soft-grid opacity-[0.10]"></div>
 					<div class="noise"></div>
-					<div class="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-between px-4 py-5 sm:px-6 lg:px-8">
+
+					<!-- Ambient glow blobs -->
+					<div class="pointer-events-none absolute -top-32 left-1/4 h-[520px] w-[520px] rounded-full bg-brand-400/10 blur-[100px]"></div>
+					<div class="pointer-events-none absolute bottom-0 right-1/4 h-[400px] w-[400px] rounded-full bg-emerald-400/10 blur-[90px]"></div>
+
+					<div class="relative mx-auto flex min-h-screen max-w-6xl flex-col justify-between px-4 py-5 sm:px-6 lg:px-8">
+
+						<!-- HEADER -->
 						<header class="glass rounded-[28px] px-5 py-4 shadow-soft">
-							<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+							<div class="flex items-center justify-between gap-4">
 								<div class="flex items-center gap-3">
-									<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-400 text-white shadow-glow">
-										<i data-lucide="activity" class="h-6 w-6"></i>
+									<div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-400 text-white shadow-glow">
+										<i data-lucide="heart-pulse" class="h-5 w-5"></i>
 									</div>
 									<div>
-										<div class="text-lg font-extrabold tracking-tight">MedPulse IoT</div>
-										<div class="text-sm text-slate-500 dark:text-slate-400">Nền tảng giám sát bệnh nhân realtime cho bệnh viện và viện dưỡng lão</div>
+										<div class="text-base font-extrabold tracking-tight">MedPulse</div>
+										<div class="text-xs text-slate-500 dark:text-slate-400">Hệ thống giám sát sức khỏe người cao tuổi</div>
 									</div>
 								</div>
-								<div class="flex flex-wrap items-center gap-3">
-									<button data-action="toggle-theme" class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-										<i data-lucide="moon-star" class="h-4 w-4"></i><span>Dark mode</span>
+								<div class="flex items-center gap-2">
+									<button data-action="toggle-theme" class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+										<i data-lucide="${state.darkMode ? 'sun' : 'moon-star'}" class="h-4 w-4"></i>
+										<span class="hidden sm:inline">${state.darkMode ? 'Sáng' : 'Tối'}</span>
 									</button>
-									<button data-action="show-login" class="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-950">
-										<i data-lucide="log-in" class="h-4 w-4"></i><span>Đăng nhập demo</span>
+									<button data-action="show-login" class="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-950">
+										<i data-lucide="log-in" class="h-4 w-4"></i><span>Đăng nhập</span>
 									</button>
 								</div>
 							</div>
 						</header>
 
-						<main class="grid flex-1 gap-6 py-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-							<section class="space-y-8 animate-slideIn">
-								<div class="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white/80 px-4 py-2 text-sm font-semibold text-brand-700 shadow-sm backdrop-blur dark:border-brand-500/20 dark:bg-slate-900/70 dark:text-brand-300">
-									<span class="h-2 w-2 rounded-full bg-mint-500 animate-pulse"></span>
-									Realtime monitoring, alerts, analytics, kiosk visibility
-								</div>
-								<div class="max-w-3xl space-y-5">
-									<h1 class="text-4xl font-black tracking-tight text-slate-900 sm:text-5xl lg:text-6xl dark:text-white">
-										Dashboard y tế IoT hiện đại để y tá nhìn nhanh, bác sĩ ra quyết định ngay.
-									</h1>
-									<p class="max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-300">
-										Giao diện được thiết kế như một sản phẩm health-tech thực chiến: số liệu sống, cảnh báo nổi bật, timeline lâm sàng, bản đồ khu vực và phân tích AI hỗ trợ trực quan.
-									</p>
-								</div>
-								<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-									${[
-										{ title: 'Bệnh nhân realtime', value: 'Live', desc: 'Kết nối từ RFID + Cloud', tone: 'brand' },
-										{ title: 'Cảnh báo khẩn', value: '3', desc: 'Fall / SpO₂ / signal', tone: 'red' },
-										{ title: 'MQTT latency', value: '120ms', desc: 'Stable channel', tone: 'mint' },
-										{ title: 'Kiosk online', value: '98.4%', desc: 'Nurse stations healthy', tone: 'amber' },
-									].map((item) => `
-										<div class="card rounded-[28px] p-5 shadow-soft transition duration-300 hover:-translate-y-1">
-											<div class="flex items-start justify-between gap-3">
-												<div>
-													<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${item.title}</div>
-													<div class="mt-2 text-3xl font-black tracking-tight">${item.value}</div>
-													<div class="mt-2 text-sm text-slate-500 dark:text-slate-400">${item.desc}</div>
-												</div>
-												${iconCircle(item.tone === 'red' ? 'shield-alert' : item.tone === 'mint' ? 'wifi' : item.tone === 'amber' ? 'square-stack' : 'users-round', item.tone)}
-											</div>
-										</div>
-									`).join('')}
-								</div>
-								<div class="flex flex-wrap items-center gap-3">
-									<button data-action="show-login" class="rounded-2xl bg-gradient-to-r from-brand-500 to-cyan-400 px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:-translate-y-0.5">
-										Trải nghiệm dashboard
-									</button>
-	
-								</div>
-							</section>
+						<!-- MAIN HERO -->
+						<main class="flex flex-1 flex-col items-center justify-center py-16 text-center animate-slideIn">
 
-							<section class="relative">
-								<div class="absolute -left-12 top-4 h-56 w-56 rounded-full bg-brand-300/20 blur-3xl"></div>
-								<div class="absolute right-4 top-40 h-40 w-40 rounded-full bg-emerald-300/20 blur-3xl"></div>
-								<div class="card relative overflow-hidden rounded-[34px] p-6 shadow-soft animate-floaty">
-									<div class="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent dark:from-white/5"></div>
-									<div class="relative">
-										<div class="flex items-center justify-between">
-											<div>
-												<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Executive preview</div>
-												<div class="mt-1 text-2xl font-black tracking-tight">Unit dashboard snapshot</div>
-											</div>
-											<div class="rounded-full bg-mint-50 px-3 py-1.5 text-xs font-bold text-mint-700 dark:bg-emerald-500/10 dark:text-emerald-300">Live</div>
-										</div>
-										<div class="mt-6 grid gap-4 sm:grid-cols-2">
-											<div class="rounded-[26px] bg-slate-950 p-5 text-white shadow-soft dark:bg-slate-900">
-												<div class="flex items-center justify-between">
-													<div>
-														<div class="text-sm text-slate-300">Patients monitored</div>
-														<div class="mt-2 text-4xl font-black">16</div>
-													</div>
-													<i data-lucide="heart-pulse" class="h-8 w-8 text-cyan-300"></i>
-												</div>
-												<div class="mt-5 rounded-2xl bg-white/10 p-3">
-													<div class="flex items-center justify-between text-xs text-slate-300"><span>Realtime risk index</span><span>72/100</span></div>
-													<div class="mt-2 h-2 rounded-full bg-white/10"><div class="h-2 w-[72%] rounded-full bg-gradient-to-r from-brand-400 to-mint-400"></div></div>
-												</div>
-											</div>
-											<div class="rounded-[26px] border border-slate-200 bg-white/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/60">
-												<div class="flex items-center justify-between">
-													<div>
-														<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Operational mode</div>
-														<div class="mt-2 text-2xl font-black">Nurse-ready</div>
-													</div>
-													<div class="rounded-2xl bg-brand-50 p-3 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i data-lucide="badge-alert" class="h-6 w-6"></i></div>
-												</div>
-												<div class="mt-5 space-y-3 text-sm text-slate-600 dark:text-slate-300">
-													<div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-emerald-500"></span> MQTT connected</div>
-													<div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-sky-500"></span> Wi-Fi stable</div>
-													<div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-amber-500"></span> 2 devices need attention</div>
-												</div>
-											</div>
-										</div>
-										<div class="mt-4 rounded-[28px] border border-slate-200 bg-gradient-to-r from-brand-50 via-cyan-50 to-emerald-50 p-5 dark:border-slate-800 dark:from-brand-500/10 dark:via-cyan-500/10 dark:to-emerald-500/10">
-											<div class="flex items-center justify-between">
-												<div>
-													<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Realtime alerts</div>
-													<div class="mt-1 text-lg font-bold">Fall detection + low SpO₂ highlight</div>
-												</div>
-												<div class="flex -space-x-2">
-													<div class="h-10 w-10 rounded-full bg-white ring-2 ring-white dark:ring-slate-950"></div>
-													<div class="h-10 w-10 rounded-full bg-brand-300 ring-2 ring-white dark:ring-slate-950"></div>
-													<div class="h-10 w-10 rounded-full bg-emerald-300 ring-2 ring-white dark:ring-slate-950"></div>
-												</div>
-											</div>
+							<!-- Badge -->
+							<div class="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm backdrop-blur dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+								<span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+								Giám sát liên tục · Cảnh báo tức thời · Kết nối RFID
+							</div>
+
+							<!-- Headline -->
+							<h1 class="max-w-3xl text-4xl font-black leading-[1.12] tracking-tight text-slate-900 sm:text-5xl lg:text-6xl dark:text-white">
+								Theo dõi sức khỏe<br/>
+								<span class="bg-gradient-to-r from-brand-500 via-cyan-500 to-emerald-500 bg-clip-text text-transparent">người cao tuổi</span><br/>
+								mọi lúc, mọi nơi.
+							</h1>
+
+							<!-- Subtext -->
+							<p class="mt-6 max-w-xl text-base leading-7 text-slate-500 dark:text-slate-400">
+								Hệ thống IoT giám sát nhịp tim, SpO₂, nhiệt độ và phát hiện té ngã theo thời gian thực, được thiết kế cho viện dưỡng lão và bệnh viện.
+							</p>
+
+							<!-- CTA -->
+							<div class="mt-10 flex flex-wrap items-center justify-center gap-3">
+								<button data-action="show-login" class="rounded-2xl bg-gradient-to-r from-brand-500 to-cyan-400 px-7 py-3.5 text-sm font-bold text-white shadow-glow transition hover:-translate-y-0.5 hover:shadow-lg">
+									Vào hệ thống
+								</button>
+								<button data-action="show-login" class="rounded-2xl border border-slate-200 bg-white px-7 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+									Đăng nhập demo
+								</button>
+							</div>
+
+							<!-- Feature pills -->
+							<div class="mt-14 flex flex-wrap items-center justify-center gap-3">
+								${[
+									{ icon: 'heart-pulse',    label: 'Nhịp tim & SpO₂ realtime' },
+									{ icon: 'thermometer',   label: 'Nhiệt độ cơ thể' },
+									{ icon: 'person-standing', label: 'Phát hiện té ngã' },
+									{ icon: 'wifi',          label: 'MQTT · WebSocket' },
+									{ icon: 'scan-line',     label: 'Nhận diện RFID' },
+								].map(f => `
+									<div class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+										<i data-lucide="${f.icon}" class="h-4 w-4 text-brand-500 dark:text-brand-400"></i>
+										${f.label}
+									</div>
+								`).join('')}
+							</div>
+						</main>
+
+						<!-- FOOTER -->
+						<footer class="pb-2 text-center text-xs text-slate-400 dark:text-slate-600">
+							MedPulse · Hệ thống giám sát sức khỏe người cao tuổi · Hoạt động 24/7
+						</footer>
+
+					</div>
+				</div>
+			`;
+		}
+
+		function renderLanding_UNUSED_PLACEHOLDER() {
+			return `<div>
+				<div>
+					<div>
+					</div>
 										</div>
 									</div>
 								</div>
@@ -1411,12 +1387,6 @@
 
 		function render() {
 			const app = document.getElementById('app');
-
-			// Lưu trạng thái focus trước khi render lại DOM
-			const activeEl = document.activeElement;
-			const activeBindKey = activeEl?.dataset?.bind || null;
-			const activeCursor = activeEl?.selectionStart ?? null;
-
 			const contentMap = {
 				dashboard: renderOverview(),
 				patients: renderPatients(),
@@ -1455,15 +1425,6 @@
 			applyTheme();
 			if (window.lucide) lucide.createIcons();
 			bindEvents();
-
-			// Restore focus và vị trí con trỏ sau khi DOM được render lại
-			if (activeBindKey) {
-				const restored = app.querySelector(`[data-bind="${activeBindKey}"]`);
-				if (restored) {
-					restored.focus();
-					try { restored.setSelectionRange(activeCursor, activeCursor); } catch(e) {}
-				}
-			}
 		}
 
 		function applyTheme() {
