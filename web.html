@@ -317,6 +317,7 @@
 		function chartCard(title, series, unit, accent, extra = '') {
     // THÊM DÒNG NÀY: Nếu mảng rỗng hoặc có ít hơn 2 phần tử, gán mảng tạm [0,0] để tránh lỗi SVG
 				const validSeries = (!series || series.length < 2) ? [0, 0] : series;
+				const isEmpty = !series || series.length === 0;
 
 				const width = 760;
 				const height = 240;
@@ -332,14 +333,14 @@
 					<div class="flex items-start justify-between gap-4 mb-4">
 						<div>
 							<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${title}</div>
-							<div class="mt-1 text-2xl font-extrabold tracking-tight">${series[series.length - 1]}<span class="ml-1 text-sm font-semibold text-slate-500">${unit}</span></div>
+							<div class="mt-1 text-2xl font-extrabold tracking-tight">${isEmpty ? '---' : validSeries[validSeries.length - 1]}<span class="ml-1 text-sm font-semibold text-slate-500">${unit}</span></div>
 						</div>
 						<div class="text-right">
 							<div class="text-xs uppercase tracking-[0.24em] text-slate-400">Độ biến thiên</div>
-							<div class="mt-1 text-sm font-semibold ${accent}">${extra || `${min} - ${max} ${unit}`}</div>
+							<div class="mt-1 text-sm font-semibold ${accent}">${isEmpty ? 'Chờ dữ liệu...' : `${min} - ${max} ${unit}`}</div>
 						</div>
 					</div>
-					<svg viewBox="0 0 ${width} ${height}" class="w-full h-56 rounded-[24px] bg-gradient-to-b from-slate-50/80 to-white dark:from-slate-900/70 dark:to-slate-950 overflow-hidden">
+					<svg viewBox="0 0 ${width} ${height}" class="w-full h-56 rounded-[24px] bg-gradient-to-b from-slate-50/80 to-white dark:from-slate-900/70 dark:to-slate-950 overflow-hidden flex items-center justify-center">
 						<defs>
 							<linearGradient id="${title.replace(/\s+/g, '-')}-line" x1="0" x2="1" y1="0" y2="0">
 								<stop offset="0%" stop-color="${accent.includes('emerald') ? '#20b46d' : accent.includes('red') ? '#ef4444' : '#2196ff'}" />
@@ -353,9 +354,12 @@
 						<g opacity="0.52">
 							${Array.from({ length: 5 }).map((_, index) => `<line x1="24" y1="${24 + index * 42}" x2="736" y2="${24 + index * 42}" stroke="rgba(148,163,184,0.12)" />`).join('')}
 						</g>
-						<path d="${fill}" fill="url(#${title.replace(/\s+/g, '-')}-fill)" />
-						<path d="${path}" fill="none" stroke="url(#${title.replace(/\s+/g, '-')}-line)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
-						${points.map((point) => `<circle cx="${point[0]}" cy="${point[1]}" r="4.5" fill="#fff" stroke="url(#${title.replace(/\s+/g, '-')}-line)" stroke-width="3" />`).join('')}
+						${isEmpty ? 
+							`<text x="380" y="120" text-anchor="middle" dominant-baseline="middle" font-size="16" fill="rgba(148, 163, 184, 0.5)">⏳ Chờ dữ liệu từ sensor...</text>` : 
+							`<path d="${fill}" fill="url(#${title.replace(/\s+/g, '-')}-fill)" />
+							<path d="${path}" fill="none" stroke="url(#${title.replace(/\s+/g, '-')}-line)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+							${points.map((point) => `<circle cx="${point[0]}" cy="${point[1]}" r="4.5" fill="#fff" stroke="url(#${title.replace(/\s+/g, '-')}-line)" stroke-width="3" />`).join('')}`
+						}
 					</svg>
 				</div>
 			`;
@@ -1630,12 +1634,16 @@
 		let reconnectTimer = null;
 
 		// ===== FUNCTION: Fetch initial patient data from HTTP API =====
-		function isEmptyPatient(patient) {
-			// Check if patient has meaningful data (not just default/mock data)
-			const hasName = patient.name && patient.name.trim() !== '' && !patient.name.startsWith('RFID-');
-			const hasVitals = patient.heartRate !== 75 || patient.spo2 !== 98 || patient.temp !== 36.5;
-			const hasActivity = patient.alert || patient.signalLost || patient.status !== 'IDLE';
-			return !hasName && !hasVitals && !hasActivity;
+		function isDefaultPatientData(patient) {
+			// Kiểm tra xem dữ liệu có phải là mặc định ảo hay thực từ MQTT
+			// Mặc định: heartRate=75, spo2=98, temp=36.5, battery=100, rssi=-55
+			const isDefault = patient.heartRate === 75 
+				&& patient.spo2 === 98 
+				&& patient.temp === 36.5 
+				&& patient.battery === 100 
+				&& patient.rssi === -55
+				&& (!patient.history || !patient.history.heartRate || patient.history.heartRate.length === 0);
+			return isDefault;
 		}
 
 		async function fetchInitialPatients() {
@@ -1654,6 +1662,7 @@
 				// Map backend data to UI format
 				patients = activePatients.map(remotePatient => {
 					const patientName = remotePatient.fullName || remotePatient.name || remotePatient.id || 'Unknown';
+					const isDefaultData = isDefaultPatientData(remotePatient);
 					return {
 						...remotePatient,
 						avatar: patientName.split(' ').slice(-2).map(p => p[0]).join('').toUpperCase() || 'P',
@@ -1663,7 +1672,11 @@
 						status: remotePatient.status || remotePatient.current_status || 'IDLE',
 						alertLevel: remotePatient.alertLevel || 'safe',
 						lastUpdate: new Date(remotePatient.lastUpdate || Date.now()),
-						history: remotePatient.history || { heartRate: [remotePatient.heartRate || 75], spo2: [remotePatient.spo2 || 98], temp: [remotePatient.temp || 36.5] },
+						// Nếu dữ liệu là mặc định ảo, chỉ khởi tạo mảy trống. Chờ MQTT gửi dữ liệu thực
+						history: isDefaultData 
+							? { heartRate: [], spo2: [], temp: [] }
+							: remotePatient.history || { heartRate: [remotePatient.heartRate || 75], spo2: [remotePatient.spo2 || 98], temp: [remotePatient.temp || 36.5] },
+						hasRealData: !isDefaultData,
 						checkins: [{ type: 'Check-in', time: new Date(remotePatient.lastUpdate || Date.now()), place: remotePatient.room || 'Room N/A' }],
 						timeline: [{ label: 'Hệ thống khởi tạo', time: new Date(remotePatient.lastUpdate || Date.now()), note: 'Bệnh nhân được tải từ cơ sở dữ liệu' }],
 						riskScore: remotePatient.riskScore || 4,
@@ -1734,13 +1747,20 @@
 							validPatients.forEach(remotePatient => {
 								const existingIdx = patients.findIndex(p => p.id === remotePatient.id);
 								const patientName = remotePatient.fullName || remotePatient.name || remotePatient.id;
+								const isDefaultData = isDefaultPatientData(remotePatient);
 								const mapped = {
 									...remotePatient,
 									avatar: patientName.split(' ').slice(-2).map(p => p[0]).join('').toUpperCase() || 'P',
 									name: patientName,
 									room: remotePatient.roomNumber || remotePatient.room || '---',
 									lastUpdate: new Date(remotePatient.lastUpdate || Date.now()),
-									history: remotePatient.history || { heartRate: [], spo2: [], temp: [] },
+									hasRealData: !isDefaultData,
+									// Chỉ dùng lịch sử thực, không tạo dữ liệu ảo
+									history: {
+										heartRate: (remotePatient.history?.heartRate && remotePatient.history.heartRate.length > 0) ? remotePatient.history.heartRate : [],
+										spo2: (remotePatient.history?.spo2 && remotePatient.history.spo2.length > 0) ? remotePatient.history.spo2 : [],
+										temp: (remotePatient.history?.temp && remotePatient.history.temp.length > 0) ? remotePatient.history.temp : [],
+									},
 								};
 								if (existingIdx !== -1) {
 									Object.assign(patients[existingIdx], mapped);
@@ -1768,7 +1788,7 @@
 						avatar: (liveData.fullName || liveData.name || liveData.id).split(' ').slice(-2).map(p => p[0]).join('').toUpperCase(),
 						status: firmwareStatus,
 						lastUpdate: new Date(liveData.lastUpdate || Date.now()),
-						history: { heartRate: [liveData.heartRate], spo2: [liveData.spo2], temp: [liveData.temp] },
+						history: { heartRate: [liveData.heartRate, liveData.heartRate], spo2: [liveData.spo2, liveData.spo2], temp: [liveData.temp, liveData.temp] },
 						checkins: [{ type: 'Check-in', time: new Date(), place: liveData.roomNumber || liveData.room || '---' }],
 						timeline: [{ label: 'Khởi tạo trạm', time: new Date(), note: 'Bệnh nhân quẹt thẻ RFID thành công' }],
 						riskScore: liveData.riskScore || 0,
