@@ -1664,7 +1664,6 @@
 						};
 
 						socket.onmessage = (event) => {
-<<<<<<< HEAD
         try {
             const rawPayload = JSON.parse(event.data);
             
@@ -1775,7 +1774,7 @@
             console.error("❌ Lỗi xử lý WebSocket:", error);
         }
     };
-=======
+
 		try {
 			const rawPayload = JSON.parse(event.data);
 
@@ -1838,7 +1837,7 @@
 			console.error("❌ Lỗi xử lý WebSocket:", error);
 		}
 	};
->>>>>>> 292b368ba5e2a02279954bf7de21fa13f716f643
+
 
 						socket.onclose = () => {
 							console.warn("🔴 Mất kết nối tới Backend. Tự động kết nối lại sau 5 giây...");
@@ -1893,7 +1892,6 @@
 					render();
 				}
 			});
-		}
 
 		bootstrap();
 	</script>
