@@ -1019,9 +1019,9 @@
 		function renderPatientDetail() {
 			const patient = currentPatient();
 			if (!patient) return `<div class="card rounded-[30px] p-6 shadow-soft">Không có bệnh nhân được chọn.</div>`;
-			const heartSeries = patient.history.heartRate;
-			const spo2Series = patient.history.spo2;
-			const tempSeries = patient.history.temp;
+			const heartSeries = patient.history?.heartRate || [];
+			const spo2Series = patient.history?.spo2 || [];
+			const tempSeries = patient.history?.temp || [];
 			return `
 				<div class="space-y-6 animate-slideIn">
 					<div class="card rounded-[30px] p-5 shadow-soft">
@@ -1074,7 +1074,7 @@
 									<button data-action="export-pdf" class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">PDF report</button>
 								</div>
 								<div class="mt-5 space-y-4">
-									${patient.checkins.map((entry) => `
+									${(patient.checkins || []).map((entry) => `
 										<div class="flex gap-4 rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
 											<div class="mt-1 h-3 w-3 rounded-full ${entry.type === 'Check-in' ? 'bg-emerald-500' : entry.type === 'Medication' ? 'bg-brand-500' : 'bg-amber-500'}"></div>
 											<div class="flex-1">
@@ -1114,10 +1114,10 @@
 										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Alert timeline</div>
 										<div class="mt-1 text-2xl font-black tracking-tight">Medical history feed</div>
 									</div>
-									<span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 dark:bg-slate-900 dark:text-slate-300">${patient.timeline.length} events</span>
+									<span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 dark:bg-slate-900 dark:text-slate-300">${(patient.timeline || []).length} events</span>
 								</div>
 								<div class="mt-5 space-y-3">
-									${patient.timeline.map((item) => `
+									${(patient.timeline || []).map((item) => `
 										<div class="flex gap-4 rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
 											<div class="mt-1 h-10 w-10 rounded-2xl bg-white p-2 text-brand-600 shadow-sm dark:bg-slate-900 dark:text-brand-300"><i data-lucide="activity" class="h-6 w-6"></i></div>
 											<div class="flex-1">
