@@ -1523,6 +1523,11 @@
 		}
 
 		function renderSettings() {
+			const patient = currentPatient();
+			if (!patient) {
+				return '<div>No patient selected</div>';
+			}
+
 			return `
 				<div class="space-y-6 animate-slideIn">
 					<div class="card rounded-[30px] p-5 shadow-soft">
