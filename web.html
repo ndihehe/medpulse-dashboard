@@ -164,7 +164,7 @@
 		const STORAGE_KEY = 'medpulse-dashboard-v1';
 		const THEME_KEY = 'medpulse-theme';
 		const DEMO_PASSWORD = 'demo123';
-
+		let socket = null;
 		const state = {
 			authed: false,
 			screen: 'landing',
@@ -1645,7 +1645,7 @@
 						// Kết nối tới Backend Cloud trên Render
 						return 'wss://<medpulse-dashboard>.onrender.com';
 					})();
-					let socket = null;
+
 					let reconnectTimer = null;
 
 					function initMedPulseWebSocket() {
