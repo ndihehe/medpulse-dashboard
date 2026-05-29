@@ -1585,7 +1585,7 @@
 									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Firmware sequence</div>
 									<div class="mt-1 text-2xl font-black tracking-tight">Chuỗi trạng thái từ firmware</div>
 									<div class="mt-5 space-y-3">
-										${(patient.statusHistory || []).slice(-8).reverse().map((entry) => `
+										${(patient?.statusHistory || []).slice(-8).reverse().map((entry) => `
 											<div class="flex items-center justify-between gap-3 rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
 												<div class="flex items-center gap-3">
 													${statusBadge(entry.status)}
