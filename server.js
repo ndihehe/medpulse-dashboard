@@ -50,11 +50,13 @@ db.getConnection((err, connection) => {
 // =========================================================================
 // Khởi tạo trước danh sách 16 bệnh nhân định danh bằng RFID để tránh lỗi Undefined trên UI
 const patientsState = {};
+const lastSeenByPatient = new Map();
+const OFFLINE_TIMEOUT_MS = Number(process.env.MQTT_OFFLINE_TIMEOUT_MS || 25000);
 const totalPatientIds = Array.from({ length: 16 }, (_, i) => `RFID-${1001 + i}`);
 
-totalPatientIds.forEach(id => {
-    patientsState[id] = {
-        id: id,
+function createDefaultPatientState(id) {
+    return {
+        id,
         heartRate: 75,
         spo2: 98,
         temp: 36.5,
@@ -72,6 +74,18 @@ totalPatientIds.forEach(id => {
         alert: false,
         lastUpdate: new Date()
     };
+}
+
+function ensurePatientState(id) {
+    if (!patientsState[id]) {
+        patientsState[id] = createDefaultPatientState(id);
+    }
+
+    return patientsState[id];
+}
+
+totalPatientIds.forEach(id => {
+    ensurePatientState(id);
 });
 
 function normalizeFirmwareStatus(value) {
@@ -87,6 +101,16 @@ function getFirmwareStatusMeta(value) {
     return FIRMWARE_STATUS_META[status] || FIRMWARE_STATUS_META.IDLE;
 }
 
+function normalizeFiniteNumber(value) {
+    const rawText = String(value || '').trim();
+    if (!rawText) {
+        return null;
+    }
+
+    const numericValue = Number(rawText);
+    return Number.isFinite(numericValue) ? numericValue : null;
+}
+
 function applyFirmwareStatusToPatient(patient, firmwareStatus) {
     const status = normalizeFirmwareStatus(firmwareStatus) || 'IDLE';
     const meta = getFirmwareStatusMeta(status);
@@ -98,6 +122,79 @@ function applyFirmwareStatusToPatient(patient, firmwareStatus) {
 
     return meta;
 }
+
+function syncFallSafeState(patient, metric, numericValue) {
+    if (metric === 'fall') {
+        if (numericValue !== 0 && numericValue !== 1) {
+            return false;
+        }
+
+        patient.fall = numericValue === 1;
+        patient.safe = numericValue === 0;
+        return true;
+    }
+
+    if (metric === 'safe') {
+        if (numericValue !== 0 && numericValue !== 1) {
+            return false;
+        }
+
+        patient.safe = numericValue === 1;
+        patient.fall = numericValue === 0;
+        return true;
+    }
+
+    if (metric === 'status') {
+        const meta = applyFirmwareStatusToPatient(patient, numericValue);
+        patient.fall = meta.fall;
+        patient.safe = meta.safe;
+        return true;
+    }
+
+    return false;
+}
+
+function publishPatientUpdate(patientId) {
+    const updatedPatientData = processPatientMetricsCalculation(patientId);
+
+    broadcastToDashboards({
+        type: 'PATIENT_UPDATE',
+        data: updatedPatientData
+    });
+
+    saveVitalsToDatabase(updatedPatientData);
+}
+
+function markPatientOffline(patientId) {
+    const patient = patientsState[patientId];
+    if (!patient || patient.signalLost) {
+        return;
+    }
+
+    patient.signalLost = true;
+    patient.safe = false;
+    patient.alertLevel = 'danger';
+    patient.alert = true;
+    patient.ble = 'Mất tín hiệu';
+    patient.lastUpdate = new Date();
+
+    publishPatientUpdate(patientId);
+}
+
+setInterval(() => {
+    const now = Date.now();
+
+    for (const patientId of Object.keys(patientsState)) {
+        const lastSeenAt = lastSeenByPatient.get(patientId);
+        if (!lastSeenAt) {
+            continue;
+        }
+
+        if (now - lastSeenAt > OFFLINE_TIMEOUT_MS) {
+            markPatientOffline(patientId);
+        }
+    }
+}, 5000);
 
 function serializePatientState(patient) {
     return {
@@ -231,10 +328,17 @@ mqttClient.on('error', (err) => {
 mqttClient.on('message', (topic, message) => {
     try {
         const parts = topic.split('/');
+        if (parts.length < 4 || parts[0] !== 'medpulse' || parts[1] !== 'health') {
+            return;
+        }
+
         const patientId = parts[2];  // Ví dụ: RFID-1001
         const metric = parts[3];     // Ví dụ: heart_rate, spo2, temp, fall, safe, battery, rssi
         const rawText = message.toString().trim();
-        const rawValue = Number(rawText);
+        const rawValue = normalizeFiniteNumber(rawText);
+
+        ensurePatientState(patientId);
+        lastSeenByPatient.set(patientId, Date.now());
 
         // Kiểm tra xem ID bệnh nhân nhận được có nằm trong danh mục quản lý hay không
         if (!patientsState[patientId]) {
@@ -258,7 +362,8 @@ mqttClient.on('message', (topic, message) => {
                 break;
             case 'battery':
                 if (!Number.isFinite(rawValue)) return;
-                patientsState[patientId].battery = Math.round(rawValue);
+                if (rawValue < 0 || rawValue > 100) return;
+                patientsState[patientId].battery = Number(rawValue.toFixed(1));
                 break;
             case 'rssi':
                 if (!Number.isFinite(rawValue)) return;
@@ -266,11 +371,15 @@ mqttClient.on('message', (topic, message) => {
                 break;
             case 'fall':
                 if (!Number.isFinite(rawValue)) return;
-                patientsState[patientId].fall = (rawValue === 1);
+                if (!syncFallSafeState(patientsState[patientId], metric, rawValue)) {
+                    return;
+                }
                 break;
             case 'safe':
                 if (!Number.isFinite(rawValue)) return;
-                patientsState[patientId].safe = (rawValue === 1);
+                if (!syncFallSafeState(patientsState[patientId], metric, rawValue)) {
+                    return;
+                }
                 break;
             case 'status':
                 const normalizedStatus = normalizeFirmwareStatus(rawText);
@@ -278,7 +387,7 @@ mqttClient.on('message', (topic, message) => {
                     console.log(`🔍 Trạng thái lạ: ${rawText}`);
                     return;
                 }
-                applyFirmwareStatusToPatient(patientsState[patientId], normalizedStatus);
+                syncFallSafeState(patientsState[patientId], metric, normalizedStatus);
                 patientsState[patientId].statusHistory = Array.isArray(patientsState[patientId].statusHistory) ? patientsState[patientId].statusHistory : [];
                 patientsState[patientId].statusHistory = [
                     ...patientsState[patientId].statusHistory,
@@ -288,6 +397,11 @@ mqttClient.on('message', (topic, message) => {
             case 'signal_lost':
                 if (!Number.isFinite(rawValue)) return;
                 patientsState[patientId].signalLost = (rawValue === 1);
+                if (rawValue === 1) {
+                    patientsState[patientId].safe = false;
+                } else if (rawValue === 0) {
+                    patientsState[patientId].safe = true;
+                }
                 break;
             default:
                 console.log(`🔍 Metric lạ: ${metric}`);
@@ -295,16 +409,7 @@ mqttClient.on('message', (topic, message) => {
         }
 
         // Thực hiện tính toán tập trung Điểm rủi ro & Xác định trạng thái màu sắc hệ thống
-        const updatedPatientData = processPatientMetricsCalculation(patientId);
-
-        // Đẩy ngay lập tức gói dữ liệu "sạch và trọn gói" này tới Dashboard qua WebSocket
-        broadcastToDashboards({
-            type: 'PATIENT_UPDATE',
-            data: updatedPatientData
-        });
-
-        // Tối ưu hóa ghi log: Lưu trữ bản ghi lịch sử vào database phục vụ truy vấn báo cáo đồ thị
-        saveVitalsToDatabase(updatedPatientData);
+        publishPatientUpdate(patientId);
 
     } catch (error) {
         console.error('❌ Lỗi xử lý gói tin MQTT:', error.message);

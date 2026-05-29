@@ -203,6 +203,43 @@
 		// Hàm tiện ích (dùng cho biểu đồ & UI, không còn sinh dữ liệu ảo)
 		function rand(min, max) { return Math.random() * (max - min) + min; }
 		function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+		function avatarFromName(name) {
+			return String(name || 'BN')
+				.split(' ')
+				.slice(-2)
+				.map((part) => part[0] || '')
+				.join('')
+				.toUpperCase() || 'BN';
+		}
+
+		function buildPatientFromRemote(remotePatient) {
+			const profile = patientPool.find((item) => item.id === remotePatient.id) || {
+				id: remotePatient.id,
+				name: `Bệnh nhân ${remotePatient.id}`,
+				room: 'N/A',
+				age: '--',
+				gender: '--',
+			};
+			const history = remotePatient.history || {
+				heartRate: [remotePatient.heartRate ?? 75],
+				spo2: [remotePatient.spo2 ?? 98],
+				temp: [remotePatient.temp ?? 36.5],
+			};
+
+			return {
+				...profile,
+				...remotePatient,
+				avatar: avatarFromName(profile.name),
+				kiosk: remotePatient.kiosk || `Kiosk ${String(1 + (patients.length % 5)).padStart(2, '0')}`,
+				zone: remotePatient.safe ? 'Within zone' : 'Alert zone',
+				history,
+				checkins: remotePatient.checkins || [],
+				timeline: remotePatient.timeline || [],
+				lastUpdate: remotePatient.lastUpdate ? new Date(remotePatient.lastUpdate) : new Date(),
+			};
+		}
+
+		
 
 		function enqueueAlert(patient, type, options = {}) {
 			const { showModal = true, cooldownMs = 0 } = options;
@@ -1195,6 +1232,11 @@
 		}
 
 		function renderSettings() {
+			const patient = currentPatient();
+			if (!patient) {
+				return '<div>No patient selected</div>';
+			}
+
 			return `
 				<div class="space-y-6 animate-slideIn">
 					<div class="card rounded-[30px] p-5 shadow-soft">
@@ -1622,6 +1664,7 @@
 						};
 
 						socket.onmessage = (event) => {
+<<<<<<< HEAD
         try {
             const rawPayload = JSON.parse(event.data);
             
@@ -1732,6 +1775,70 @@
             console.error("❌ Lỗi xử lý WebSocket:", error);
         }
     };
+=======
+		try {
+			const rawPayload = JSON.parse(event.data);
+
+			// 1. Đồng bộ ban đầu khi load trang
+			if (rawPayload.type === 'INITIAL_SYNC') {
+				rawPayload.data.forEach((remotePatient) => {
+					const localPatient = patients.find((patient) => patient.id === remotePatient.id);
+					if (localPatient) {
+						Object.assign(localPatient, remotePatient);
+						localPatient.lastUpdate = new Date(remotePatient.lastUpdate);
+					} else {
+						patients.push(buildPatientFromRemote(remotePatient));
+					}
+				});
+				render();
+				return;
+			}
+
+			// 2. Nhận cập nhật thời gian thực từ ESP32 gửi lên
+			if (rawPayload.type === 'PATIENT_UPDATE') {
+				const liveData = rawPayload.data;
+				const firmwareStatus = normalizeFirmwareStatus(liveData.status);
+				const index = patients.findIndex((patient) => patient.id === liveData.id);
+				let patientRecord = null;
+
+				if (index !== -1) {
+					const oldData = patients[index];
+
+					const updatedHistory = {
+						heartRate: [...oldData.history.heartRate.slice(1), liveData.heartRate],
+						spo2: [...oldData.history.spo2.slice(1), liveData.spo2],
+						temp: [...oldData.history.temp.slice(1), liveData.temp]
+					};
+
+					patientRecord = {
+						...oldData,
+						...liveData,
+						status: firmwareStatus,
+						history: updatedHistory,
+						lastUpdate: new Date(liveData.lastUpdate)
+					};
+					patients[index] = patientRecord;
+				} else {
+					patientRecord = buildPatientFromRemote(liveData);
+					patientRecord.status = firmwareStatus;
+					patients.push(patientRecord);
+				}
+
+				if (firmwareStatus === 'ALERT') {
+					enqueueAlert(patientRecord, 'critical', { showModal: true, cooldownMs: 20000 });
+				} else if (isTransitionFirmwareStatus(firmwareStatus)) {
+					enqueueAlert(patientRecord, 'warning', { showModal: false, cooldownMs: 30000 });
+				} else if (liveData.signalLost) {
+					enqueueAlert(patientRecord, 'critical', { showModal: true, cooldownMs: 30000 });
+				}
+
+				render();
+			}
+		} catch (error) {
+			console.error("❌ Lỗi xử lý WebSocket:", error);
+		}
+	};
+>>>>>>> 292b368ba5e2a02279954bf7de21fa13f716f643
 
 						socket.onclose = () => {
 							console.warn("🔴 Mất kết nối tới Backend. Tự động kết nối lại sau 5 giây...");
