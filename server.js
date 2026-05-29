@@ -11,6 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
+const FIRMWARE_STATUSES = new Set(['IDLE', 'FALLING', 'IMPACT', 'MOTIONLESS', 'ALERT']);
 
 // =========================================================================
 // 1. KẾT NỐI CƠ SỞ DỮ LIỆU MYSQL POOL (Tối ưu hóa đa kết nối)
@@ -57,11 +58,21 @@ totalPatientIds.forEach(id => {
         signalLost: false,
         ble: 'Ổn định',
         riskScore: 4,
-        status: 'safe',
+        status: 'IDLE',
+        alertLevel: 'safe',
+        statusHistory: [{ status: 'IDLE', at: new Date().toISOString() }],
         alert: false,
         lastUpdate: new Date()
     };
 });
+
+function normalizeFirmwareStatus(value) {
+    const status = String(value || '').trim().toUpperCase();
+    if (!status || !FIRMWARE_STATUSES.has(status)) {
+        return null;
+    }
+    return status;
+}
 
 
 // =========================================================================
@@ -88,18 +99,40 @@ function processPatientMetricsCalculation(patientId) {
     // Giới hạn điểm số từ mức tối thiểu 4 đến tối đa 99 điểm
     patient.riskScore = Math.max(4, Math.min(99, Math.round(score)));
 
-    // Xác định phân cấp trạng thái tổng quan
-    if (isFall || isSignalLost || spo2 < 92 || hr > 125) {
-        patient.status = 'danger';
-    } else if (!isSafe || spo2 < 94 || hr > 110 || hr < 55 || temp > 37.8) {
-        patient.status = 'warning';
+    const firmwareStatus = normalizeFirmwareStatus(patient.status) || 'IDLE';
+    patient.status = firmwareStatus;
+
+    if (firmwareStatus === 'ALERT') {
+        patient.fall = true;
+        patient.safe = false;
+    } else if (firmwareStatus === 'IDLE') {
+        patient.fall = false;
+        patient.safe = true;
     } else {
-        patient.status = 'safe';
+        patient.safe = false;
+    }
+
+    // Gán mức nguy cơ phục vụ màu giao diện và cảnh báo phụ trợ
+    if (firmwareStatus === 'ALERT' || isFall || isSignalLost || spo2 < 92 || hr > 125) {
+        patient.alertLevel = 'danger';
+    } else if (firmwareStatus !== 'IDLE' || !isSafe || spo2 < 94 || hr > 110 || hr < 55 || temp > 37.8) {
+        patient.alertLevel = 'warning';
+    } else {
+        patient.alertLevel = 'safe';
     }
 
     // Gán cờ cảnh báo kích hoạt
-    patient.alert = (patient.status !== 'safe');
+    patient.alert = (firmwareStatus !== 'IDLE' || patient.alertLevel !== 'safe');
     patient.lastUpdate = new Date();
+
+    patient.statusHistory = Array.isArray(patient.statusHistory) ? patient.statusHistory : [];
+    const lastStatus = patient.statusHistory[patient.statusHistory.length - 1];
+    if (!lastStatus || lastStatus.status !== firmwareStatus) {
+        patient.statusHistory = [
+            ...patient.statusHistory,
+            { status: firmwareStatus, at: patient.lastUpdate.toISOString() }
+        ].slice(-25);
+    }
 
     // Đồng bộ hóa chuỗi trạng thái văn bản hiển thị cho kết nối BLE
     if (isSignalLost) {
@@ -180,7 +213,8 @@ mqttClient.on('message', (topic, message) => {
         const parts = topic.split('/');
         const patientId = parts[2];  // Ví dụ: RFID-1001
         const metric = parts[3];     // Ví dụ: heart_rate, spo2, temp, fall, safe, battery, rssi
-        const rawValue = parseFloat(message.toString());
+        const rawText = message.toString().trim();
+        const rawValue = Number(rawText);
 
         // Kiểm tra xem ID bệnh nhân nhận được có nằm trong danh mục quản lý hay không
         if (!patientsState[patientId]) {
@@ -191,27 +225,57 @@ mqttClient.on('message', (topic, message) => {
         // Cập nhật giá trị thô tương ứng vào bộ nhớ đệm dựa vào metric định tuyến
         switch(metric) {
             case 'heart_rate':
+                if (!Number.isFinite(rawValue)) return;
                 patientsState[patientId].heartRate = Math.round(rawValue);
                 break;
             case 'spo2':
+                if (!Number.isFinite(rawValue)) return;
                 patientsState[patientId].spo2 = Math.round(rawValue);
                 break;
             case 'temp':
+                if (!Number.isFinite(rawValue)) return;
                 patientsState[patientId].temp = Number(rawValue.toFixed(1));
                 break;
             case 'battery':
+                if (!Number.isFinite(rawValue)) return;
                 patientsState[patientId].battery = Math.round(rawValue);
                 break;
             case 'rssi':
+                if (!Number.isFinite(rawValue)) return;
                 patientsState[patientId].rssi = Math.round(rawValue);
                 break;
             case 'fall':
+                if (!Number.isFinite(rawValue)) return;
                 patientsState[patientId].fall = (rawValue === 1);
                 break;
             case 'safe':
+                if (!Number.isFinite(rawValue)) return;
                 patientsState[patientId].safe = (rawValue === 1);
                 break;
+            case 'status':
+                const normalizedStatus = normalizeFirmwareStatus(rawText);
+                if (!normalizedStatus) {
+                    console.log(`🔍 Trạng thái lạ: ${rawText}`);
+                    return;
+                }
+                patientsState[patientId].status = normalizedStatus;
+                patientsState[patientId].statusHistory = Array.isArray(patientsState[patientId].statusHistory) ? patientsState[patientId].statusHistory : [];
+                patientsState[patientId].statusHistory = [
+                    ...patientsState[patientId].statusHistory,
+                    { status: normalizedStatus, at: new Date().toISOString() }
+                ].slice(-25);
+                if (normalizedStatus === 'ALERT') {
+                    patientsState[patientId].fall = true;
+                    patientsState[patientId].safe = false;
+                } else if (normalizedStatus === 'IDLE') {
+                    patientsState[patientId].fall = false;
+                    patientsState[patientId].safe = true;
+                } else {
+                    patientsState[patientId].safe = false;
+                }
+                break;
             case 'signal_lost':
+                if (!Number.isFinite(rawValue)) return;
                 patientsState[patientId].signalLost = (rawValue === 1);
                 break;
             default:
@@ -243,13 +307,13 @@ mqttClient.on('message', (topic, message) => {
 function saveVitalsToDatabase(p) {
     const query = `
         INSERT INTO vitals_log 
-        (patient_id, heart_rate, spo2, temp, battery, rssi, fall_status, is_safe, risk_score, status_level) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (patient_id, heart_rate, spo2, temp, battery, rssi, fall_status, is_safe, device_status, status_level, status_history, risk_score) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     const values = [
         p.id, p.heartRate, p.spo2, p.temp, p.battery, p.rssi, 
-        p.fall ? 1 : 0, p.safe ? 1 : 0, p.riskScore, p.status
+        p.fall ? 1 : 0, p.safe ? 1 : 0, p.status, p.alertLevel, JSON.stringify(p.statusHistory || []), p.riskScore
     ];
 
     db.query(query, values, (err, result) => {
@@ -258,6 +322,18 @@ function saveVitalsToDatabase(p) {
         }
     });
 }
+
+app.get('/api/patients', (req, res) => {
+    res.json(Object.values(patientsState));
+});
+
+app.get('/api/patients/:id', (req, res) => {
+    const patient = patientsState[req.params.id];
+    if (!patient) {
+        return res.status(404).json({ error: 'Không tìm thấy bệnh nhân' });
+    }
+    res.json(patient);
+});
 
 
 // =========================================================================
@@ -269,7 +345,7 @@ app.get('/api/patients/:id/history', (req, res) => {
     const limit = parseInt(req.query.limit) || 30; // Mặc định lấy 30 điểm dữ liệu gần nhất để vẽ hình
 
     const query = `
-        SELECT heart_rate as heartRate, spo2, temp, risk_score as riskScore, recorded_at as time 
+        SELECT heart_rate as heartRate, spo2, temp, device_status as status, status_level as alertLevel, status_history as statusHistory, risk_score as riskScore, recorded_at as time 
         FROM vitals_log 
         WHERE patient_id = ? 
         ORDER BY recorded_at DESC 

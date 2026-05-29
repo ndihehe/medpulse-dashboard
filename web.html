@@ -271,8 +271,8 @@
 				const riskScore = Math.round(rand(18, 92));
 				const fall = Math.random() < 0.09;
 				const signalLost = Math.random() < 0.05;
-				const alert = fall || signalLost || !safe || spo2 < 94 || heartRate > 110 || heartRate < 55;
-				const status = fall || signalLost ? 'danger' : safe ? 'safe' : 'warning';
+				const status = fall ? 'ALERT' : signalLost ? 'MOTIONLESS' : safe ? 'IDLE' : (index % 3 === 0 ? 'FALLING' : index % 3 === 1 ? 'IMPACT' : 'MOTIONLESS');
+				const alert = status !== 'IDLE' || spo2 < 94 || heartRate > 110 || heartRate < 55;
 				return {
 					...profile,
 					index,
@@ -324,8 +324,8 @@
 				const safe = Math.random() > 0.16;
 				const signalLost = Math.random() < 0.03 ? !patient.signalLost : patient.signalLost && Math.random() < 0.6;
 				const fall = Math.random() < 0.03 ? true : patient.fall && Math.random() < 0.82;
-				const alert = fall || signalLost || !safe || spo2 < 94 || heartRate > 112 || heartRate < 54 || temp > 37.8;
-				const status = fall || signalLost ? 'danger' : safe ? 'safe' : 'warning';
+				const status = fall ? 'ALERT' : signalLost ? 'MOTIONLESS' : safe ? 'IDLE' : (patient.status === 'IDLE' ? 'FALLING' : patient.status === 'FALLING' ? 'IMPACT' : patient.status === 'IMPACT' ? 'MOTIONLESS' : 'ALERT');
+				const alert = status !== 'IDLE' || signalLost || spo2 < 94 || heartRate > 112 || heartRate < 54 || temp > 37.8;
 				const riskScore = clamp(Math.round((100 - spo2) * 1.2 + Math.abs(heartRate - 78) * 1.1 + Math.max(temp - 37.3, 0) * 18 + (safe ? 0 : 12) + (signalLost ? 24 : 0) + (fall ? 40 : 0)), 4, 99);
 				const updatedHistory = {
 					heartRate: [...patient.history.heartRate.slice(1), heartRate],
@@ -523,18 +523,53 @@
 			`;
 		}
 
+		function normalizeFirmwareStatus(value) {
+			const status = String(value || '').trim().toUpperCase();
+			return ['IDLE', 'FALLING', 'IMPACT', 'MOTIONLESS', 'ALERT'].includes(status) ? status : 'IDLE';
+		}
+
+		function isNormalFirmwareStatus(value) {
+			return normalizeFirmwareStatus(value) === 'IDLE';
+		}
+
+		function isTransitionFirmwareStatus(value) {
+			const status = normalizeFirmwareStatus(value);
+			return status === 'FALLING' || status === 'IMPACT' || status === 'MOTIONLESS';
+		}
+
+		function isCriticalFirmwareStatus(value) {
+			return normalizeFirmwareStatus(value) === 'ALERT';
+		}
+
+		function firmwareStatusLabel(value) {
+			const labels = {
+				IDLE: 'Bình thường',
+				FALLING: 'Đang ngã',
+				IMPACT: 'Va chạm',
+				MOTIONLESS: 'Bất động',
+				ALERT: 'Té ngã xác nhận',
+			};
+			return labels[normalizeFirmwareStatus(value)] || labels.IDLE;
+		}
+
+		function firmwareStatusBadgeClass(value) {
+			const classes = {
+				IDLE: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20',
+				FALLING: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20',
+				IMPACT: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:ring-orange-500/20',
+				MOTIONLESS: 'bg-slate-100 text-slate-700 ring-1 ring-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:ring-slate-500/20',
+				ALERT: 'bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20',
+			};
+			return classes[normalizeFirmwareStatus(value)] || classes.IDLE;
+		}
+
+		function normalizeFilterValue(value) {
+			const filter = String(value || 'all').trim();
+			return ['all', 'IDLE', 'FALLING', 'IMPACT', 'MOTIONLESS', 'ALERT'].includes(filter) ? filter : 'all';
+		}
+
 		function statusBadge(value) {
-			const map = {
-				safe: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20',
-				warning: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20',
-				danger: 'bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20',
-			};
-			const text = {
-				safe: 'An toàn',
-				warning: 'Cảnh báo',
-				danger: 'Nguy hiểm',
-			};
-			return `<span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${map[value]}"><span class="h-1.5 w-1.5 rounded-full bg-current"></span>${text[value]}</span>`;
+			return `<span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${firmwareStatusBadgeClass(value)}"><span class="h-1.5 w-1.5 rounded-full bg-current"></span>${firmwareStatusLabel(value)}</span>`;
 		}
 
 		function iconCircle(name, tone = 'brand') {
@@ -792,7 +827,7 @@
 							<div class="flex items-center justify-between">
 								<div>
 									<div class="text-xs uppercase tracking-[0.24em] text-slate-400">Realtime</div>
-									<div class="mt-2 text-2xl font-black">${patients.filter((patient) => patient.status === 'safe').length}/${patients.length}</div>
+									<div class="mt-2 text-2xl font-black">${patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length}/${patients.length}</div>
 								</div>
 								<div class="rounded-2xl bg-white/10 p-3"><i data-lucide="radiation" class="h-6 w-6 text-cyan-300"></i></div>
 							</div>
@@ -863,21 +898,21 @@
 		}
 
 		function renderOverview() {
-			const safeCount = patients.filter((patient) => patient.status === 'safe').length;
-			const warningCount = patients.filter((patient) => patient.status === 'warning').length;
-			const dangerCount = patients.filter((patient) => patient.status === 'danger').length;
-			const fallCount = patients.filter((patient) => patient.fall).length;
+			const safeCount = patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length;
+			const warningCount = patients.filter((patient) => isTransitionFirmwareStatus(patient.status)).length;
+			const dangerCount = patients.filter((patient) => isCriticalFirmwareStatus(patient.status)).length;
+			const fallCount = patients.filter((patient) => isCriticalFirmwareStatus(patient.status) || patient.fall).length;
 			const avgHeart = Math.round(patients.reduce((sum, patient) => sum + patient.heartRate, 0) / patients.length);
 			const avgTemp = (patients.reduce((sum, patient) => sum + patient.temp, 0) / patients.length).toFixed(1);
 			const avgSpO2 = Math.round(patients.reduce((sum, patient) => sum + patient.spo2, 0) / patients.length);
 			const heartSeries = Array.from({ length: 18 }, (_, index) => Math.round(avgHeart + Math.sin((index / 17) * Math.PI * 2) * 7 + rand(-3, 3)));
 			const tempSeries = Array.from({ length: 18 }, (_, index) => Number((Number(avgTemp) + Math.sin((index / 17) * Math.PI * 2) * 0.18 + rand(-0.08, 0.08)).toFixed(1)));
-			const alertPatients = patients.filter((patient) => patient.status !== 'safe').slice(0, 4);
+			const alertPatients = patients.filter((patient) => !isNormalFirmwareStatus(patient.status)).slice(0, 4);
 			const criticalItems = [
 				{ label: 'MQTT', value: state.mqttStatus === 'connected' ? 'Connected' : 'Degraded', tone: state.mqttStatus === 'connected' ? 'green' : 'amber' },
 				{ label: 'Wi-Fi', value: state.wifiStatus === 'stable' ? 'Stable' : 'Unstable', tone: state.wifiStatus === 'stable' ? 'green' : 'amber' },
 				{ label: 'Kiosk', value: state.kioskStatus === 'online' ? 'Online' : 'Warning', tone: state.kioskStatus === 'online' ? 'green' : 'amber' },
-				{ label: 'BLE', value: `${patients.filter((patient) => patient.signalLost).length} issue(s)`, tone: patients.some((patient) => patient.signalLost) ? 'red' : 'blue' },
+				{ label: 'Firmware status', value: `${patients.filter((patient) => !isNormalFirmwareStatus(patient.status)).length} active`, tone: dangerCount ? 'red' : 'blue' },
 			];
 
 			return `
@@ -985,9 +1020,9 @@
 			const pageItems = visible.slice((page - 1) * state.pageSize, page * state.pageSize);
 			const summary = {
 				all: patients.length,
-				safe: patients.filter((patient) => patient.status === 'safe').length,
-				warning: patients.filter((patient) => patient.status === 'warning').length,
-				danger: patients.filter((patient) => patient.status === 'danger').length,
+				safe: patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length,
+				warning: patients.filter((patient) => isTransitionFirmwareStatus(patient.status)).length,
+				danger: patients.filter((patient) => isCriticalFirmwareStatus(patient.status)).length,
 			};
 			return `
 				<div class="space-y-6 animate-slideIn">
@@ -1005,8 +1040,8 @@
 						<div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
 							${statChip('Tổng', summary.all, 'blue')}
 							${statChip('An toàn', summary.safe, 'green')}
-							${statChip('Cảnh báo', summary.warning, 'amber')}
-							${statChip('Nguy hiểm', summary.danger, 'red')}
+							${statChip('Đang ngã / chuyển trạng thái', summary.warning, 'amber')}
+							${statChip('Té ngã xác nhận', summary.danger, 'red')}
 						</div>
 					</div>
 
@@ -1020,9 +1055,11 @@
 								<span class="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Filter</span>
 								<select data-bind="filter" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15">
 									<option value="all" ${state.filter === 'all' ? 'selected' : ''}>Tất cả</option>
-									<option value="safe" ${state.filter === 'safe' ? 'selected' : ''}>An toàn</option>
-									<option value="warning" ${state.filter === 'warning' ? 'selected' : ''}>Cảnh báo</option>
-									<option value="danger" ${state.filter === 'danger' ? 'selected' : ''}>Nguy hiểm</option>
+									<option value="IDLE" ${state.filter === 'IDLE' ? 'selected' : ''}>Bình thường</option>
+									<option value="FALLING" ${state.filter === 'FALLING' ? 'selected' : ''}>Đang ngã</option>
+									<option value="IMPACT" ${state.filter === 'IMPACT' ? 'selected' : ''}>Va chạm</option>
+									<option value="MOTIONLESS" ${state.filter === 'MOTIONLESS' ? 'selected' : ''}>Bất động</option>
+									<option value="ALERT" ${state.filter === 'ALERT' ? 'selected' : ''}>Té ngã xác nhận</option>
 								</select>
 							</label>
 							<label class="block">
@@ -1050,7 +1087,7 @@
 							<table class="min-w-full text-left">
 								<thead class="sticky top-0 z-10 bg-slate-50/90 text-xs uppercase tracking-[0.18em] text-slate-400 dark:bg-slate-950/80">
 									<tr>
-										${['Patient', 'RFID', 'HR', 'SpO₂', 'Temp', 'Zone', 'Battery', 'Fall', 'Updated'].map((head) => `<th class="px-5 py-4 font-bold">${head}</th>`).join('')}
+										${['Patient', 'RFID', 'HR', 'SpO₂', 'Temp', 'Status', 'Battery', 'Fall', 'Updated'].map((head) => `<th class="px-5 py-4 font-bold">${head}</th>`).join('')}
 									</tr>
 								</thead>
 								<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1265,9 +1302,9 @@
 											</div>
 										</div>
 									`).join('')}
-									${patients.filter((patient) => patient.status === 'danger').slice(0, 4).map((patient, index) => `
+									${patients.filter((patient) => isCriticalFirmwareStatus(patient.status) || isTransitionFirmwareStatus(patient.status)).slice(0, 4).map((patient, index) => `
 										<div class="absolute" style="top:${20 + index * 12}%; left:${70 - index * 10}%;">
-											<div class="flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-lg ${patient.fall ? 'pulse-critical' : ''}">
+												<div class="flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-lg ${isCriticalFirmwareStatus(patient.status) ? 'pulse-critical' : ''}">
 												<span class="h-2 w-2 rounded-full bg-white/90"></span>${patient.avatar} · ${patient.room}
 											</div>
 										</div>
@@ -1345,7 +1382,7 @@
 								${[
 									{ title: 'Need attention', value: `${topRisk.length}`, desc: 'Patients with elevated risk', tone: 'red', icon: 'brain-circuit' },
 									{ title: 'Trend signal', value: 'Upward', desc: 'Heart rate variance rising', tone: 'amber', icon: 'trending-up' },
-									{ title: 'Stable cohort', value: `${patients.filter((patient) => patient.status === 'safe').length}`, desc: 'Still within normal bands', tone: 'mint', icon: 'shield-check' },
+									{ title: 'Stable cohort', value: `${patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length}`, desc: 'Still within normal bands', tone: 'mint', icon: 'shield-check' },
 								].map((item) => `
 									<div class="card rounded-[28px] p-5 shadow-soft">
 										<div class="flex items-start justify-between gap-3">
@@ -1396,7 +1433,7 @@
 													<div class="text-sm text-slate-500 dark:text-slate-400">Risk score ${patient.riskScore}</div>
 												</div>
 												<div class="text-right">
-													<div class="text-sm font-bold ${patient.riskScore > 75 ? 'text-red-600 dark:text-red-300' : 'text-amber-600 dark:text-amber-300'}">${patient.status.toUpperCase()}</div>
+													<div class="text-sm font-bold ${patient.riskScore > 75 ? 'text-red-600 dark:text-red-300' : 'text-amber-600 dark:text-amber-300'}">${firmwareStatusLabel(patient.status)}</div>
 													<div class="text-xs text-slate-500 dark:text-slate-400">${patient.kiosk}</div>
 												</div>
 											</div>
@@ -1446,7 +1483,7 @@
 										<div class="flex items-center justify-between rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
 											<div>
 												<div class="font-bold">${patient.name}</div>
-												<div class="text-sm text-slate-500 dark:text-slate-400">${patient.status === 'danger' ? 'Alarm logged' : 'Vitals archived'} · ${patient.kiosk}</div>
+												<div class="text-sm text-slate-500 dark:text-slate-400">${isCriticalFirmwareStatus(patient.status) ? 'Alarm logged' : 'Firmware state archived'} · ${patient.kiosk}</div>
 											</div>
 											<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${formatRelative((Date.now() - patient.lastUpdate.getTime()) / 60000)}</div>
 										</div>
@@ -1857,6 +1894,7 @@
 				try {
 					const parsed = JSON.parse(saved);
 					Object.assign(state, parsed);
+					state.filter = normalizeFilterValue(state.filter);
 					state.loading = true;
 				} catch (error) {
 				}
@@ -1915,6 +1953,7 @@
             // 2. Nhận cập nhật thời gian thực từ ESP32 gửi lên
             if (rawPayload.type === 'PATIENT_UPDATE') {
                 const liveData = rawPayload.data;
+								const firmwareStatus = normalizeFirmwareStatus(liveData.status);
                 const index = patients.findIndex(p => p.id === liveData.id);
 
                 if (index !== -1) {
@@ -1931,18 +1970,19 @@
                     patients[index] = {
                         ...oldData,
                         ...liveData,
+										status: firmwareStatus,
                         history: updatedHistory,
                         // SỬA TẠI ĐÂY: Ép chuỗi chữ từ Backend thành đối tượng Date thực thụ
                         lastUpdate: new Date(liveData.lastUpdate)
                     };
 
                     // Kích hoạt còi và modal báo động khẩn cấp mặc định của bạn
-                    if (liveData.fall) {
+									if (firmwareStatus === 'ALERT') {
                         enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 20000 });
-                    } else if (liveData.signalLost) {
+									} else if (isTransitionFirmwareStatus(firmwareStatus)) {
+										enqueueAlert(patients[index], 'warning', { showModal: false, cooldownMs: 30000 });
+									} else if (liveData.signalLost) {
                         enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 30000 });
-                    } else if (liveData.status === 'warning') {
-                        enqueueAlert(patients[index], 'warning', { showModal: false, cooldownMs: 60000 });
                     }
 
                     render();
