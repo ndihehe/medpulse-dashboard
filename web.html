@@ -1387,6 +1387,9 @@
 
 		function render() {
 			const app = document.getElementById('app');
+			const activeEl = document.activeElement;
+			const activeBindKey = activeEl?.dataset?.bind || null;
+			const activeCursor = activeEl?.selectionStart ?? null;
 			const contentMap = {
 				dashboard: renderOverview(),
 				patients: renderPatients(),
@@ -1425,6 +1428,14 @@
 			applyTheme();
 			if (window.lucide) lucide.createIcons();
 			bindEvents();
+
+			if (activeBindKey) {
+				const restored = app.querySelector(`[data-bind="${activeBindKey}"]`);
+				if (restored) {
+					restored.focus();
+					try { restored.setSelectionRange(activeCursor, activeCursor); } catch(e) {}
+				}
+			}
 		}
 
 		function applyTheme() {
