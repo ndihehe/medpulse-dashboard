@@ -204,6 +204,18 @@
 		function rand(min, max) { return Math.random() * (max - min) + min; }
 		function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
 
+		function formatTime(date) {
+			return new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(date);
+		}
+		function formatDateTime(date) {
+			return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(date);
+		}
+		function formatRelative(minutesAgo) {
+			if (minutesAgo < 1) return 'vừa xong';
+			if (minutesAgo < 60) return `${Math.round(minutesAgo)} phút trước`;
+			return `${Math.floor(minutesAgo / 60)} giờ trước`;
+		}
+
 		function enqueueAlert(patient, type, options = {}) {
 			const { showModal = true, cooldownMs = 0 } = options;
 			const now = Date.now();
