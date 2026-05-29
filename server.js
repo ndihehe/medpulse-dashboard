@@ -13,46 +13,44 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000;
 const FIRMWARE_STATUSES = new Set(['IDLE', 'FALLING', 'IMPACT', 'MOTIONLESS', 'ALERT']);
 const FIRMWARE_STATUS_META = {
-    IDLE: { alertLevel: 'safe', riskWeight: 0, fall: false, safe: true },
-    FALLING: { alertLevel: 'warning', riskWeight: 18, fall: false, safe: false },
-    IMPACT: { alertLevel: 'warning', riskWeight: 28, fall: false, safe: false },
+    IDLE:       { alertLevel: 'safe',    riskWeight: 0,  fall: false, safe: true  },
+    FALLING:    { alertLevel: 'warning', riskWeight: 18, fall: false, safe: false },
+    IMPACT:     { alertLevel: 'warning', riskWeight: 28, fall: false, safe: false },
     MOTIONLESS: { alertLevel: 'warning', riskWeight: 36, fall: false, safe: false },
-    ALERT: { alertLevel: 'danger', riskWeight: 46, fall: true, safe: false },
+    ALERT:      { alertLevel: 'danger',  riskWeight: 46, fall: true,  safe: false },
 };
 
 // =========================================================================
-// 1. KẾT NỐI CƠ SỞ DỮ LIỆU MYSQL POOL (Tối ưu hóa đa kết nối)
+// 1. KẾT NỐI MYSQL POOL
 // =========================================================================
 const db = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE || process.env.DB_NAME, // Hỗ trợ cả 2 cách đặt tên biến env
-    port: process.env.DB_PORT,
+    host:             process.env.DB_HOST,
+    user:             process.env.DB_USER,
+    password:         process.env.DB_PASSWORD,
+    database:         process.env.DB_DATABASE || process.env.DB_NAME,
+    port:             process.env.DB_PORT,
     waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    
-    // BỔ SUNG CÁC DÒNG NÀY ĐỂ TRÁNH BỊ DISCONNECT TRÊN RAILWAY:
-    enableKeepAlive: true,      // Tự động gửi gói tin giữ kết nối sống
-    keepAliveInitialDelay: 10000, // Bắt đầu gửi sau 10 giây rảnh rỗi
-    connectTimeout: 20000        // Tăng thời gian chờ kết nối lên 20 giây
+    connectionLimit:  10,
+    queueLimit:       0,
+    enableKeepAlive:  true,
+    keepAliveInitialDelay: 10000,
+    connectTimeout:   20000,
 });
-// Kiểm tra kết nối DB khi khởi động hệ thống
+
 db.getConnection((err, connection) => {
     if (err) {
-        console.error('❌ Lỗi kết nối cơ sở dữ liệu MySQL:', err.message);
+        console.error(' Lỗi kết nối cơ sở dữ liệu MySQL:', err.message);
     } else {
         console.log('🔹 Cơ sở dữ liệu MySQL đã kết nối thành công!');
         connection.release();
+        // [FIX] Load hồ sơ bệnh nhân từ DB vào RAM ngay khi khởi động
+        loadPatientProfiles();
     }
 });
 
-
 // =========================================================================
-// 2. QUẢN LÝ TRẠNG THÁI BỆNH NHÂN IN-MEMORY CACHE (Khớp cấu trúc web.html)
+// 2. QUẢN LÝ TRẠNG THÁI BỆNH NHÂN IN-MEMORY
 // =========================================================================
-// Khởi tạo trước danh sách 16 bệnh nhân định danh bằng RFID để tránh lỗi Undefined trên UI
 const patientsState = {};
 const lastSeenByPatient = new Map();
 const OFFLINE_TIMEOUT_MS = Number(process.env.MQTT_OFFLINE_TIMEOUT_MS || 25000);
@@ -61,22 +59,30 @@ const totalPatientIds = Array.from({ length: 16 }, (_, i) => `RFID-${1001 + i}`)
 function createDefaultPatientState(id) {
     return {
         id,
-        heartRate: 75,
-        spo2: 98,
-        temp: 36.5,
-        battery: 100,
-        rssi: -55,
-        safe: true,
-        fall: false,
-        signalLost: false,
-        ble: 'Ổn định',
-        riskScore: 4,
-        status: 'IDLE',
+        // Thông tin hồ sơ — sẽ được ghi đè bởi loadPatientProfiles()
+        name:              null,
+        age:               null,
+        gender:            null,
+        room:              null,
+        bed:               null,
+        condition_summary: null,
+        // Sinh hiệu mặc định
+        heartRate:    75,
+        spo2:         98,
+        temp:         36.5,
+        battery:      100,
+        rssi:         -55,
+        safe:         true,
+        fall:         false,
+        signalLost:   false,
+        ble:          'Ổn định',
+        riskScore:    4,
+        status:       'IDLE',
         current_status: 'IDLE',
-        alertLevel: 'safe',
+        alertLevel:   'safe',
         statusHistory: [{ status: 'IDLE', at: new Date().toISOString() }],
-        alert: false,
-        lastUpdate: new Date()
+        alert:        false,
+        lastUpdate:   new Date(),
     };
 }
 
@@ -84,20 +90,46 @@ function ensurePatientState(id) {
     if (!patientsState[id]) {
         patientsState[id] = createDefaultPatientState(id);
     }
-
     return patientsState[id];
 }
 
-totalPatientIds.forEach(id => {
-    ensurePatientState(id);
-});
+totalPatientIds.forEach(id => ensurePatientState(id));
 
+// =========================================================================
+// [FIX] Load hồ sơ bệnh nhân từ bảng patients vào patientsState
+// =========================================================================
+function loadPatientProfiles() {
+    db.query('SELECT * FROM patients', (err, rows) => {
+        if (err) {
+            console.error(' Lỗi load hồ sơ bệnh nhân từ DB:', err.message);
+            return;
+        }
+        rows.forEach(row => {
+            // Đảm bảo slot RAM tồn tại dù id này chưa trong totalPatientIds
+            const state = ensurePatientState(row.id);
+            state.name              = row.name              || null;
+            state.age               = row.age               ?? null;
+            state.gender            = row.gender            || null;
+            state.room              = row.room              || null;
+            state.bed               = row.bed               || null;
+            state.condition_summary = row.condition_summary || null;
+        });
+        console.log(` Đã load ${rows.length} hồ sơ bệnh nhân từ bảng patients`);
+
+        // Sau khi load xong profile, broadcast INITIAL_SYNC lại để web nhận ngay
+        broadcastToDashboards({
+            type: 'INITIAL_SYNC',
+            data: Object.values(patientsState).map(serializePatientState),
+        });
+    });
+}
+
+// =========================================================================
+// HELPER FUNCTIONS
+// =========================================================================
 function normalizeFirmwareStatus(value) {
     const status = String(value || '').trim().toUpperCase();
-    if (!status || !FIRMWARE_STATUSES.has(status)) {
-        return null;
-    }
-    return status;
+    return FIRMWARE_STATUSES.has(status) ? status : null;
 }
 
 function getFirmwareStatusMeta(value) {
@@ -105,135 +137,74 @@ function getFirmwareStatusMeta(value) {
     return FIRMWARE_STATUS_META[status] || FIRMWARE_STATUS_META.IDLE;
 }
 
-function normalizeFiniteNumber(value) {
-    const rawText = String(value || '').trim();
-    if (!rawText) {
-        return null;
-    }
-
-    const numericValue = Number(rawText);
-    return Number.isFinite(numericValue) ? numericValue : null;
-}
-
 function applyFirmwareStatusToPatient(patient, firmwareStatus) {
     const status = normalizeFirmwareStatus(firmwareStatus) || 'IDLE';
-    const meta = getFirmwareStatusMeta(status);
-
-    patient.status = status;
+    const meta   = getFirmwareStatusMeta(status);
+    patient.status         = status;
     patient.current_status = status;
-    patient.fall = meta.fall;
-    patient.safe = meta.safe;
-
+    patient.fall           = meta.fall;
+    patient.safe           = meta.safe;
     return meta;
 }
 
-function syncFallSafeState(patient, metric, numericValue) {
+function syncFallSafeState(patient, metric, value) {
     if (metric === 'fall') {
-        if (numericValue !== 0 && numericValue !== 1) {
-            return false;
-        }
-
-        patient.fall = numericValue === 1;
-        patient.safe = numericValue === 0;
+        if (value !== 0 && value !== 1) return false;
+        patient.fall = value === 1;
+        patient.safe = value === 0;
         return true;
     }
-
     if (metric === 'safe') {
-        if (numericValue !== 0 && numericValue !== 1) {
-            return false;
-        }
-
-        patient.safe = numericValue === 1;
-        patient.fall = numericValue === 0;
+        if (value !== 0 && value !== 1) return false;
+        patient.safe = value === 1;
+        patient.fall = value === 0;
         return true;
     }
-
     if (metric === 'status') {
-        const meta = applyFirmwareStatusToPatient(patient, numericValue);
+        const meta   = applyFirmwareStatusToPatient(patient, value);
         patient.fall = meta.fall;
         patient.safe = meta.safe;
         return true;
     }
-
     return false;
 }
 
-function publishPatientUpdate(patientId) {
-    const updatedPatientData = processPatientMetricsCalculation(patientId);
-
-    broadcastToDashboards({
-        type: 'PATIENT_UPDATE',
-        data: updatedPatientData
-    });
-
-    saveVitalsToDatabase(updatedPatientData);
-}
-
-function markPatientOffline(patientId) {
-    const patient = patientsState[patientId];
-    if (!patient || patient.signalLost) {
-        return;
-    }
-
-    patient.signalLost = true;
-    patient.safe = false;
-    patient.alertLevel = 'danger';
-    patient.alert = true;
-    patient.ble = 'Mất tín hiệu';
-    patient.lastUpdate = new Date();
-
-    publishPatientUpdate(patientId);
-}
-
-setInterval(() => {
-    const now = Date.now();
-
-    for (const patientId of Object.keys(patientsState)) {
-        const lastSeenAt = lastSeenByPatient.get(patientId);
-        if (!lastSeenAt) {
-            continue;
-        }
-
-        if (now - lastSeenAt > OFFLINE_TIMEOUT_MS) {
-            markPatientOffline(patientId);
-        }
-    }
-}, 5000);
-
+// [FIX] serializePatientState — đảm bảo name/age/gender/room luôn có mặt
 function serializePatientState(patient) {
     return {
         ...patient,
-        current_status: patient.current_status || patient.status || 'IDLE',
+        current_status:    patient.current_status || patient.status || 'IDLE',
+        name:              patient.name              || patient.id,
+        age:               patient.age              ?? null,
+        gender:            patient.gender           || null,
+        room:              patient.room             || null,
+        bed:               patient.bed              || null,
+        condition_summary: patient.condition_summary || null,
     };
 }
 
-
 // =========================================================================
-// 3. THUẬT TOÁN TÍNH TOÁN ĐIỂM RỦI RO & PHÂN CẤP TRẠNG THÁI (Business Logic)
+// 3. THUẬT TOÁN TÍNH ĐIỂM RỦI RO
 // =========================================================================
 function processPatientMetricsCalculation(patientId) {
-    const patient = patientsState[patientId];
-    
-    const hr = patient.heartRate;
-    const spo2 = patient.spo2;
-    const temp = patient.temp;
-    const isSignalLost = patient.signalLost;
+    const patient        = patientsState[patientId];
+    const hr             = patient.heartRate;
+    const spo2           = patient.spo2;
+    const temp           = patient.temp;
+    const isSignalLost   = patient.signalLost;
     const firmwareStatus = normalizeFirmwareStatus(patient.status) || 'IDLE';
-    const statusMeta = applyFirmwareStatusToPatient(patient, firmwareStatus);
-    const isSafe = patient.safe;
-    const isFall = patient.fall;
+    const statusMeta     = applyFirmwareStatusToPatient(patient, firmwareStatus);
+    const isSafe         = patient.safe;
+    const isFall         = patient.fall;
 
-    // Áp dụng chính xác công thức tính toán trọng số rủi ro lâm sàng
-    let score = (100 - spo2) * 1.2 
-                + Math.abs(hr - 78) * 1.1 
-                + Math.max(temp - 37.3, 0) * 18 
-                + (isSignalLost ? 24 : 0) 
-                + statusMeta.riskWeight;
-    
-    // Giới hạn điểm số từ mức tối thiểu 4 đến tối đa 99 điểm
+    let score = (100 - spo2) * 1.2
+              + Math.abs(hr - 78) * 1.1
+              + Math.max(temp - 37.3, 0) * 18
+              + (isSignalLost ? 24 : 0)
+              + statusMeta.riskWeight;
+
     patient.riskScore = Math.max(4, Math.min(99, Math.round(score)));
 
-    // Gán mức nguy cơ phục vụ màu giao diện và cảnh báo phụ trợ
     if (statusMeta.alertLevel === 'danger' || isFall || isSignalLost || spo2 < 92 || hr > 125) {
         patient.alertLevel = 'danger';
     } else if (statusMeta.alertLevel !== 'safe' || !isSafe || spo2 < 94 || hr > 110 || hr < 55 || temp > 37.8) {
@@ -242,8 +213,7 @@ function processPatientMetricsCalculation(patientId) {
         patient.alertLevel = 'safe';
     }
 
-    // Gán cờ cảnh báo kích hoạt
-    patient.alert = (firmwareStatus !== 'IDLE' || patient.alertLevel !== 'safe');
+    patient.alert      = (firmwareStatus !== 'IDLE' || patient.alertLevel !== 'safe');
     patient.lastUpdate = new Date();
 
     patient.statusHistory = Array.isArray(patient.statusHistory) ? patient.statusHistory : [];
@@ -251,30 +221,53 @@ function processPatientMetricsCalculation(patientId) {
     if (!lastStatus || lastStatus.status !== firmwareStatus) {
         patient.statusHistory = [
             ...patient.statusHistory,
-            { status: firmwareStatus, at: patient.lastUpdate.toISOString() }
+            { status: firmwareStatus, at: patient.lastUpdate.toISOString() },
         ].slice(-25);
     }
 
-    // Đồng bộ hóa chuỗi trạng thái văn bản hiển thị cho kết nối BLE
-    if (isSignalLost) {
-        patient.ble = 'Mất tín hiệu';
-    } else if (patient.battery < 20) {
-        patient.ble = 'Pin yếu';
-    } else {
-        patient.ble = 'Ổn định';
-    }
+    patient.ble = isSignalLost ? 'Mất tín hiệu'
+                : patient.battery < 20 ? 'Pin yếu'
+                : 'Ổn định';
 
     return patient;
 }
 
+function publishPatientUpdate(patientId) {
+    const data = processPatientMetricsCalculation(patientId);
+    broadcastToDashboards({ type: 'PATIENT_UPDATE', data: serializePatientState(data) });
+    saveVitalsToDatabase(data);
+}
+
+function markPatientOffline(patientId) {
+    const patient = patientsState[patientId];
+    if (!patient || patient.signalLost) return;
+    patient.signalLost  = true;
+    patient.safe        = false;
+    patient.alertLevel  = 'danger';
+    patient.alert       = true;
+    patient.ble         = 'Mất tín hiệu';
+    patient.lastUpdate  = new Date();
+    publishPatientUpdate(patientId);
+}
+
+setInterval(() => {
+    const now = Date.now();
+    for (const patientId of Object.keys(patientsState)) {
+        const lastSeen = lastSeenByPatient.get(patientId);
+        if (lastSeen && now - lastSeen > OFFLINE_TIMEOUT_MS) {
+            markPatientOffline(patientId);
+        }
+    }
+}, 5000);
 
 // =========================================================================
-// 4. KHỞI TẠO WEBSOCKET SERVER (Đẩy dữ liệu chân rết thời gian thực về Web UI)
+// 4. WEBSOCKET SERVER
 // =========================================================================
-const server = app.listen(PORT, () => console.log(`🚀 MedPulse Backend Service đang chạy trên Port: ${PORT}`));
+const server = app.listen(PORT, () =>
+    console.log(` MedPulse Backend Service đang chạy trên Port: ${PORT}`)
+);
 const wss = new WebSocket.Server({ server });
 
-// Hàm Broadcast gửi gói tin tới tất cả các trình duyệt đang kết nối dashboard
 function broadcastToDashboards(data) {
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
@@ -284,32 +277,28 @@ function broadcastToDashboards(data) {
 }
 
 wss.on('connection', (ws) => {
-    console.log('🔌 Thiết bị Giám sát (Dashboard Client) đã thiết lập kết nối WebSocket.');
-    
-    // Tính năng tối ưu: Khi Web load lại trang, Backend lập tức gửi toàn bộ trạng thái hiện tại của 16 bệnh nhân để đồng bộ ngay lập tức
+    console.log('🔌 Dashboard Client đã kết nối WebSocket.');
+    // Gửi toàn bộ state hiện tại (đã có profile) cho client mới
     ws.send(JSON.stringify({
         type: 'INITIAL_SYNC',
-        data: Object.values(patientsState)
+        data: Object.values(patientsState).map(serializePatientState),
     }));
-
-    ws.on('close', () => console.log('❌ Một Dashboard Client đã đóng kết nối WebSocket.'));
+    ws.on('close', () => console.log(' Một Dashboard Client đã đóng kết nối.'));
 });
 
-
 // =========================================================================
-// 5. KẾT NỐI HỆ THỐNG BROKER MQTT (Hứng tín hiệu từ các Chip ESP32 nhúng)
+// 5. MQTT CLIENT
 // =========================================================================
 const mqttOptions = {
-    clientId: `medpulse_backend_${Math.random().toString(16).substr(2, 8)}`,
-    clean: true,
+    clientId:       `medpulse_backend_${Math.random().toString(16).substr(2, 8)}`,
+    clean:          true,
     connectTimeout: 4000,
     reconnectPeriod: 1000,
 };
 
-if (process.env.MQTT_USER) mqttOptions.username = process.env.MQTT_USER;
+if (process.env.MQTT_USER)     mqttOptions.username = process.env.MQTT_USER;
 if (process.env.MQTT_PASSWORD) mqttOptions.password = process.env.MQTT_PASSWORD;
 
-// Tự động thêm cấu hình đuôi đường dẫn nếu hệ thống chạy giao thức WebSocket (ws://)
 const brokerUrl = process.env.MQTT_BROKER_URL || 'ws://broker.hivemq.com:8000/mqtt';
 if (brokerUrl.startsWith('ws://') || brokerUrl.startsWith('wss://')) {
     mqttOptions.path = '/mqtt';
@@ -318,136 +307,168 @@ if (brokerUrl.startsWith('ws://') || brokerUrl.startsWith('wss://')) {
 const mqttClient = mqtt.connect(brokerUrl, mqttOptions);
 
 mqttClient.on('connect', () => {
-    console.log('📡 Đã thiết lập liên kết thành công với HiveMQ Broker!');
-    
-    // Đổi thành đường ống độc quyền "medpulse_duy" để lọc sạch người lạ
-    // Sử dụng duy nhất 1 dấu wildcard (+) ở giữa cho patient_id, đuôi cố định là /vitals
+    console.log(' Đã kết nối HiveMQ Broker!');
     mqttClient.subscribe('medpulse_duy/+/vitals');
-    console.log('📥 Đã Đăng ký lắng nghe Topic: medpulse_duy/+/vitals');
+    console.log(' Đang lắng nghe topic: medpulse_duy/+/vitals');
 });
 
-mqttClient.on('error', (err) => {
-    console.error('❌ Kết nối MQTT Broker thất bại:', err.message);
-});
+mqttClient.on('error', (err) =>
+    console.error(' Lỗi kết nối MQTT:', err.message)
+);
 
 mqttClient.on('message', (topic, message) => {
     try {
         const parts = topic.split('/');
-        if (parts.length !== 3 || parts[0] !== 'medpulse_duy' || parts[2] !== 'vitals') {
-            return;
-        }
+        if (parts.length !== 3 || parts[0] !== 'medpulse_duy' || parts[2] !== 'vitals') return;
 
         const patientId = parts[1];
-        const liveData = JSON.parse(message.toString().trim());
+        const liveData  = JSON.parse(message.toString().trim());
 
         ensurePatientState(patientId);
         lastSeenByPatient.set(patientId, Date.now());
 
-        if (!patientsState[patientId]) {
-            console.warn(`⚠️ Nhận dữ liệu từ thiết bị lạ chưa định danh trong hệ thống: ${patientId}`);
-            return;
-        }
+        const p = patientsState[patientId];
 
-        // 1. ĐỒNG BỘ DỮ LIỆU VÀO RAM STATE
-        if (Number.isFinite(liveData.heartRate)) patientsState[patientId].heartRate = Math.round(liveData.heartRate);
-        if (Number.isFinite(liveData.spo2)) patientsState[patientId].spo2 = Math.round(liveData.spo2);
-        if (Number.isFinite(liveData.temp)) patientsState[patientId].temp = Number(liveData.temp.toFixed(1));
-        if (Number.isFinite(liveData.battery)) patientsState[patientId].battery = Number(liveData.battery.toFixed(1));
+        // Đồng bộ sinh hiệu
+        if (Number.isFinite(liveData.heartRate)) p.heartRate = Math.round(liveData.heartRate);
+        if (Number.isFinite(liveData.spo2))      p.spo2      = Math.round(liveData.spo2);
+        if (Number.isFinite(liveData.temp))      p.temp      = Number(liveData.temp.toFixed(1));
+        if (Number.isFinite(liveData.battery))   p.battery   = Number(liveData.battery.toFixed(1));
+        // [FIX] Đồng bộ rssi từ sketch mới
+        if (Number.isFinite(liveData.rssi))      p.rssi      = Math.round(liveData.rssi);
 
-        patientsState[patientId].signalLost = (liveData.signalLost === true || liveData.signalLost === 1);
+        p.signalLost = (liveData.signalLost === true || liveData.signalLost === 1);
 
-        const fwStatus = liveData.firmwareStatus || 'IDLE';
-        const normalizedStatus = normalizeFirmwareStatus(fwStatus);
-        
+        const normalizedStatus = normalizeFirmwareStatus(liveData.firmwareStatus || 'IDLE');
         if (normalizedStatus) {
-            syncFallSafeState(patientsState[patientId], 'status', normalizedStatus);
-            patientsState[patientId].statusHistory = Array.isArray(patientsState[patientId].statusHistory) ? patientsState[patientId].statusHistory : [];
-            patientsState[patientId].statusHistory = [
-                ...patientsState[patientId].statusHistory,
-                { status: normalizedStatus, at: new Date().toISOString() }
-            ].slice(-25);
+            syncFallSafeState(p, 'status', normalizedStatus);
         }
 
-        // 2. TÍNH TOÁN RỦI RO, GỬI WEB DASHBOARD & TỰ ĐỘNG GHI VÀO DB (CHỈ GHI KHI KHÔNG MẤT TÍN HIỆU)
-        if (!patientsState[patientId].signalLost) {
-            publishPatientUpdate(patientId); // Hàm này bên trong đã có lệnh gọi saveVitalsToDatabase rồi nhé!
-            console.log(`💾 [MedPulse] Đã kích hoạt tiến trình cập nhật dữ liệu trực tuyến cho: ${patientId}`);
+        if (!p.signalLost) {
+            publishPatientUpdate(patientId);
+            console.log(` Đã cập nhật + lưu DB cho: ${patientId}`);
         } else {
-            // Nếu mất tín hiệu hoặc checkout rời giường, chỉ đẩy trạng thái lên Web, không ghi log sinh hiệu trống vào DB
-            const updatedPatientData = processPatientMetricsCalculation(patientId);
-            broadcastToDashboards({
-                type: 'PATIENT_UPDATE',
-                data: updatedPatientData
-            });
-            console.log(`📡 [Mất tín hiệu/Rời giường] Chỉ cập nhật trạng thái lên Web Dashboard cho: ${patientId}`);
+            const updated = processPatientMetricsCalculation(patientId);
+            broadcastToDashboards({ type: 'PATIENT_UPDATE', data: serializePatientState(updated) });
+            console.log(`📡 [Mất tín hiệu] Cập nhật UI cho: ${patientId}`);
         }
 
     } catch (error) {
-        console.error('❌ Lỗi xử lý cấu trúc gói tin JSON MQTT:', error.message);
+        console.error(' Lỗi xử lý MQTT JSON:', error.message);
     }
 });
 
-
 // =========================================================================
-// 6. HÀM LƯU DỮ LIỆU ĐỒNG BỘ ASYNC VÀO MYSQL DB
+// 6. LƯU VITALS VÀO DB
 // =========================================================================
 function saveVitalsToDatabase(p) {
+    // [FIX] Kiểm tra cột tồn tại bằng INSERT an toàn — dùng ON DUPLICATE KEY để tránh crash
     const query = `
-        INSERT INTO vitals_log 
-        (patient_id, heart_rate, spo2, temp, battery, rssi, fall_status, is_safe, device_status, current_status, status_level, status_history, risk_score) 
+        INSERT INTO vitals_log
+        (patient_id, heart_rate, spo2, temp, battery, rssi,
+         fall_status, is_safe, device_status, current_status,
+         status_level, status_history, risk_score)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    
     const values = [
-        p.id, p.heartRate, p.spo2, p.temp, p.battery, p.rssi, 
-        p.fall ? 1 : 0, p.safe ? 1 : 0, p.status, p.current_status || p.status, p.alertLevel, JSON.stringify(p.statusHistory || []), p.riskScore
+        p.id,
+        p.heartRate,
+        p.spo2,
+        p.temp,
+        p.battery,
+        p.rssi    || -55,
+        p.fall    ? 1 : 0,
+        p.safe    ? 1 : 0,
+        p.status  || 'IDLE',
+        p.current_status || p.status || 'IDLE',
+        p.alertLevel     || 'safe',
+        JSON.stringify(p.statusHistory || []),
+        p.riskScore      || 4,
     ];
 
-    db.query(query, values, (err, result) => {
+    db.query(query, values, (err) => {
         if (err) {
-            console.error(`❌ Không thể lưu log cho bệnh nhân ${p.id}:`, err.message);
+            console.error(` Lỗi lưu DB bệnh nhân ${p.id}:`, err.message);
+            // [FIX] In SQL để dễ debug trên Railway logs
+            console.error('   SQL values:', JSON.stringify(values));
+        } else {
+            console.log(` Đã ghi vitals_log cho ${p.id}`);
         }
     });
 }
 
+// =========================================================================
+// 7. HTTP API
+// =========================================================================
+
+// [FIX] API /api/patients — join thêm profile từ DB để chắc chắn có name/age/gender
 app.get('/api/patients', (req, res) => {
-    res.json(Object.values(patientsState).map(serializePatientState));
+    db.query('SELECT * FROM patients', (err, rows) => {
+        const profileMap = {};
+        if (!err && rows) {
+            rows.forEach(r => { profileMap[r.id] = r; });
+        }
+
+        const result = Object.values(patientsState).map(p => {
+            const profile = profileMap[p.id] || {};
+            return {
+                ...serializePatientState(p),
+                name:              profile.name              || p.name    || p.id,
+                age:               profile.age               ?? p.age    ?? null,
+                gender:            profile.gender            || p.gender  || null,
+                room:              profile.room              || p.room    || null,
+                bed:               profile.bed               || p.bed     || null,
+                condition_summary: profile.condition_summary || p.condition_summary || null,
+            };
+        });
+
+        res.json(result);
+    });
 });
 
+// [FIX] API /api/patients/:id — join profile từ DB
 app.get('/api/patients/:id', (req, res) => {
-    const patient = patientsState[req.params.id];
-    if (!patient) {
-        return res.status(404).json({ error: 'Không tìm thấy bệnh nhân' });
-    }
-    res.json(serializePatientState(patient));
+    const id      = req.params.id;
+    const patient = patientsState[id];
+    if (!patient) return res.status(404).json({ error: 'Không tìm thấy bệnh nhân' });
+
+    db.query('SELECT * FROM patients WHERE id = ?', [id], (err, rows) => {
+        const profile = (!err && rows && rows[0]) ? rows[0] : {};
+        res.json({
+            ...serializePatientState(patient),
+            name:              profile.name              || patient.name    || id,
+            age:               profile.age               ?? patient.age    ?? null,
+            gender:            profile.gender            || patient.gender  || null,
+            room:              profile.room              || patient.room    || null,
+            bed:               profile.bed               || patient.bed     || null,
+            condition_summary: profile.condition_summary || patient.condition_summary || null,
+        });
+    });
 });
 
-
-// =========================================================================
-// 7. HTTP API BỔ SUNG (Dành cho các tác vụ lấy dữ liệu lịch sử)
-// =========================================================================
-// API lấy dữ liệu lịch sử của 1 bệnh nhân để vẽ đồ thị dài hạn (thay thế cho giả lập)
+// API lịch sử vitals
 app.get('/api/patients/:id/history', (req, res) => {
     const patientId = req.params.id;
-    const limit = parseInt(req.query.limit) || 30; // Mặc định lấy 30 điểm dữ liệu gần nhất để vẽ hình
+    const limit     = parseInt(req.query.limit) || 30;
 
     const query = `
-        SELECT heart_rate as heartRate, spo2, temp, device_status as status, current_status, status_level as alertLevel, status_history as statusHistory, risk_score as riskScore, recorded_at as time 
-        FROM vitals_log 
-        WHERE patient_id = ? 
-        ORDER BY recorded_at DESC 
+        SELECT heart_rate AS heartRate, spo2, temp,
+               device_status AS status, current_status,
+               status_level AS alertLevel, status_history AS statusHistory,
+               risk_score AS riskScore, recorded_at AS time
+        FROM vitals_log
+        WHERE patient_id = ?
+        ORDER BY recorded_at DESC
         LIMIT ?
     `;
 
     db.query(query, [patientId, limit], (err, results) => {
-        if (err) {
-            return res.status(500).json({ error: 'Lỗi truy vấn database', details: err.message });
-        }
-        // Đảo ngược mảng để đồ thị chạy đúng thứ tự thời gian từ cũ đến mới
+        if (err) return res.status(500).json({ error: 'Lỗi truy vấn DB', details: err.message });
         res.json(results.reverse());
     });
 });
-// Serve web.html tại route /
+
+// Serve web.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'web.html'));
 });
