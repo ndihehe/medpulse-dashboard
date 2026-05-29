@@ -217,6 +217,42 @@
 			{ id: 'RFID-1016', name: 'Nguyễn Văn Tâm', room: 'H-240', age: 86, gender: 'Nam' },
 		];
 
+		function avatarFromName(name) {
+			return String(name || 'BN')
+				.split(' ')
+				.slice(-2)
+				.map((part) => part[0] || '')
+				.join('')
+				.toUpperCase() || 'BN';
+		}
+
+		function buildPatientFromRemote(remotePatient) {
+			const profile = patientPool.find((item) => item.id === remotePatient.id) || {
+				id: remotePatient.id,
+				name: `Bệnh nhân ${remotePatient.id}`,
+				room: 'N/A',
+				age: '--',
+				gender: '--',
+			};
+			const history = remotePatient.history || {
+				heartRate: [remotePatient.heartRate ?? 75],
+				spo2: [remotePatient.spo2 ?? 98],
+				temp: [remotePatient.temp ?? 36.5],
+			};
+
+			return {
+				...profile,
+				...remotePatient,
+				avatar: avatarFromName(profile.name),
+				kiosk: remotePatient.kiosk || `Kiosk ${String(1 + (patients.length % 5)).padStart(2, '0')}`,
+				zone: remotePatient.safe ? 'Within zone' : 'Alert zone',
+				history,
+				checkins: remotePatient.checkins || [],
+				timeline: remotePatient.timeline || [],
+				lastUpdate: remotePatient.lastUpdate ? new Date(remotePatient.lastUpdate) : new Date(),
+			};
+		}
+
 		function rand(min, max) {
 			return Math.random() * (max - min) + min;
 		}
@@ -1957,65 +1993,68 @@
 						};
 
 						socket.onmessage = (event) => {
-        try {
-            const rawPayload = JSON.parse(event.data);
-            
-            // 1. Đồng bộ ban đầu khi load trang
-            if (rawPayload.type === 'INITIAL_SYNC') {
-                rawPayload.data.forEach(remotePatient => {
-                    const localPatient = patients.find(p => p.id === remotePatient.id);
-                    if (localPatient) {
-                        Object.assign(localPatient, remotePatient);
-                        // SỬA TẠI ĐÂY: Ép chuỗi chữ từ Backend thành đối tượng Date thực thụ
-                        localPatient.lastUpdate = new Date(remotePatient.lastUpdate);
-                    }
-                });
-                render();
-                return;
-            }
+		try {
+			const rawPayload = JSON.parse(event.data);
 
-            // 2. Nhận cập nhật thời gian thực từ ESP32 gửi lên
-            if (rawPayload.type === 'PATIENT_UPDATE') {
-                const liveData = rawPayload.data;
-								const firmwareStatus = normalizeFirmwareStatus(liveData.status);
-                const index = patients.findIndex(p => p.id === liveData.id);
+			// 1. Đồng bộ ban đầu khi load trang
+			if (rawPayload.type === 'INITIAL_SYNC') {
+				rawPayload.data.forEach((remotePatient) => {
+					const localPatient = patients.find((patient) => patient.id === remotePatient.id);
+					if (localPatient) {
+						Object.assign(localPatient, remotePatient);
+						localPatient.lastUpdate = new Date(remotePatient.lastUpdate);
+					} else {
+						patients.push(buildPatientFromRemote(remotePatient));
+					}
+				});
+				render();
+				return;
+			}
 
-                if (index !== -1) {
-                    const oldData = patients[index];
+			// 2. Nhận cập nhật thời gian thực từ ESP32 gửi lên
+			if (rawPayload.type === 'PATIENT_UPDATE') {
+				const liveData = rawPayload.data;
+				const firmwareStatus = normalizeFirmwareStatus(liveData.status);
+				const index = patients.findIndex((patient) => patient.id === liveData.id);
+				let patientRecord = null;
 
-                    // Cập nhật mảng lịch sử (Giữ lại tối đa 30 điểm gần nhất giống code gốc của bạn)
-                    const updatedHistory = {
-                        heartRate: [...oldData.history.heartRate.slice(1), liveData.heartRate],
-                        spo2: [...oldData.history.spo2.slice(1), liveData.spo2],
-                        temp: [...oldData.history.temp.slice(1), liveData.temp]
-                    };
+				if (index !== -1) {
+					const oldData = patients[index];
 
-                    // Ghi đè trạng thái sạch từ Backend
-                    patients[index] = {
-                        ...oldData,
-                        ...liveData,
-										status: firmwareStatus,
-                        history: updatedHistory,
-                        // SỬA TẠI ĐÂY: Ép chuỗi chữ từ Backend thành đối tượng Date thực thụ
-                        lastUpdate: new Date(liveData.lastUpdate)
-                    };
+					const updatedHistory = {
+						heartRate: [...oldData.history.heartRate.slice(1), liveData.heartRate],
+						spo2: [...oldData.history.spo2.slice(1), liveData.spo2],
+						temp: [...oldData.history.temp.slice(1), liveData.temp]
+					};
 
-                    // Kích hoạt còi và modal báo động khẩn cấp mặc định của bạn
-									if (firmwareStatus === 'ALERT') {
-                        enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 20000 });
-									} else if (isTransitionFirmwareStatus(firmwareStatus)) {
-										enqueueAlert(patients[index], 'warning', { showModal: false, cooldownMs: 30000 });
-									} else if (liveData.signalLost) {
-                        enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 30000 });
-                    }
+					patientRecord = {
+						...oldData,
+						...liveData,
+						status: firmwareStatus,
+						history: updatedHistory,
+						lastUpdate: new Date(liveData.lastUpdate)
+					};
+					patients[index] = patientRecord;
+				} else {
+					patientRecord = buildPatientFromRemote(liveData);
+					patientRecord.status = firmwareStatus;
+					patients.push(patientRecord);
+				}
 
-                    render();
-                }
-            }
-        } catch (error) {
-            console.error("❌ Lỗi xử lý WebSocket:", error);
-        }
-    };
+				if (firmwareStatus === 'ALERT') {
+					enqueueAlert(patientRecord, 'critical', { showModal: true, cooldownMs: 20000 });
+				} else if (isTransitionFirmwareStatus(firmwareStatus)) {
+					enqueueAlert(patientRecord, 'warning', { showModal: false, cooldownMs: 30000 });
+				} else if (liveData.signalLost) {
+					enqueueAlert(patientRecord, 'critical', { showModal: true, cooldownMs: 30000 });
+				}
+
+				render();
+			}
+		} catch (error) {
+			console.error("❌ Lỗi xử lý WebSocket:", error);
+		}
+	};
 
 						socket.onclose = () => {
 							console.warn("🔴 Mất kết nối tới Backend. Tự động kết nối lại sau 5 giây...");
