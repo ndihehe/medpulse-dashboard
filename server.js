@@ -35,6 +35,7 @@ const db = mysql.createPool({
     enableKeepAlive:  true,
     keepAliveInitialDelay: 10000,
     connectTimeout:   20000,
+    ssl: { rejectUnauthorized: false }
 });
 
 db.getConnection((err, connection) => {
