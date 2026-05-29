@@ -27,13 +27,17 @@ const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
-    port: process.env.DB_PORT || 3306,
+    database: process.env.DB_DATABASE || process.env.DB_NAME, // Hỗ trợ cả 2 cách đặt tên biến env
+    port: process.env.DB_PORT,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    
+    // BỔ SUNG CÁC DÒNG NÀY ĐỂ TRÁNH BỊ DISCONNECT TRÊN RAILWAY:
+    enableKeepAlive: true,      // Tự động gửi gói tin giữ kết nối sống
+    keepAliveInitialDelay: 10000, // Bắt đầu gửi sau 10 giây rảnh rỗi
+    connectTimeout: 20000        // Tăng thời gian chờ kết nối lên 20 giây
 });
-
 // Kiểm tra kết nối DB khi khởi động hệ thống
 db.getConnection((err, connection) => {
     if (err) {
