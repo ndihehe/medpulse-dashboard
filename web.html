@@ -1634,6 +1634,14 @@
 		let reconnectTimer = null;
 
 		// ===== FUNCTION: Fetch initial patient data from HTTP API =====
+		function isEmptyPatient(patient) {
+			// Check if patient has meaningful data (not just default/mock data)
+			const hasName = patient.name && patient.name.trim() !== '' && !patient.name.startsWith('RFID-');
+			const hasVitals = patient.heartRate !== 75 || patient.spo2 !== 98 || patient.temp !== 36.5;
+			const hasActivity = patient.alert || patient.signalLost || patient.status !== 'IDLE';
+			return !hasName && !hasVitals && !hasActivity;
+		}
+
 		function isDefaultPatientData(patient) {
 			// Kiểm tra xem dữ liệu có phải là mặc định ảo hay thực từ MQTT
 			// Mặc định: heartRate=75, spo2=98, temp=36.5, battery=100, rssi=-55
