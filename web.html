@@ -164,7 +164,7 @@
 		const STORAGE_KEY = 'medpulse-dashboard-v1';
 		const THEME_KEY = 'medpulse-theme';
 		const DEMO_PASSWORD = 'demo123';
-		let socket = null;
+
 		const state = {
 			authed: false,
 			screen: 'landing',
@@ -203,43 +203,6 @@
 		// Hàm tiện ích (dùng cho biểu đồ & UI, không còn sinh dữ liệu ảo)
 		function rand(min, max) { return Math.random() * (max - min) + min; }
 		function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
-		function avatarFromName(name) {
-			return String(name || 'BN')
-				.split(' ')
-				.slice(-2)
-				.map((part) => part[0] || '')
-				.join('')
-				.toUpperCase() || 'BN';
-		}
-
-		function buildPatientFromRemote(remotePatient) {
-			const profile = patientPool.find((item) => item.id === remotePatient.id) || {
-				id: remotePatient.id,
-				name: `Bệnh nhân ${remotePatient.id}`,
-				room: 'N/A',
-				age: '--',
-				gender: '--',
-			};
-			const history = remotePatient.history || {
-				heartRate: [remotePatient.heartRate ?? 75],
-				spo2: [remotePatient.spo2 ?? 98],
-				temp: [remotePatient.temp ?? 36.5],
-			};
-
-			return {
-				...profile,
-				...remotePatient,
-				avatar: avatarFromName(profile.name),
-				kiosk: remotePatient.kiosk || `Kiosk ${String(1 + (patients.length % 5)).padStart(2, '0')}`,
-				zone: remotePatient.safe ? 'Within zone' : 'Alert zone',
-				history,
-				checkins: remotePatient.checkins || [],
-				timeline: remotePatient.timeline || [],
-				lastUpdate: remotePatient.lastUpdate ? new Date(remotePatient.lastUpdate) : new Date(),
-			};
-		}
-
-		
 
 		function enqueueAlert(patient, type, options = {}) {
 			const { showModal = true, cooldownMs = 0 } = options;
@@ -1232,11 +1195,6 @@
 		}
 
 		function renderSettings() {
-			const patient = currentPatient();
-			if (!patient) {
-				return '<div>No patient selected</div>';
-			}
-
 			return `
 				<div class="space-y-6 animate-slideIn">
 					<div class="card rounded-[30px] p-5 shadow-soft">
@@ -1536,6 +1494,7 @@
 						state.profileOpen = false;
 						state.notificationsOpen = false;
 						showToast('Chào mừng', 'Đăng nhập thành công vào MedPulse.', 'info');
+						initMedPulseWebSocket();
 						render();
 					}
 					if (action === 'fill-demo') {
@@ -1635,246 +1594,7 @@
 				}
 				render();
 			}, 900);
-			// =========================================================================
-					// ĐOẠN MÃ MỚI: KẾT NỐI REAL-TIME WEBSOCKET TỚI BACKEND
-					// =========================================================================
-					const BACKEND_WS_URL = (() => {
-						if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-							return 'ws://localhost:5000';
-						}
-						// Kết nối tới Backend Cloud trên Render
-						return 'wss://<medpulse-dashboard>.onrender.com';
-					})();
-
-					let reconnectTimer = null;
-
-					function initMedPulseWebSocket() {
-						if (socket) {
-							socket.close();
-						}
-
-						socket = new WebSocket(BACKEND_WS_URL);
-
-						socket.onopen = () => {
-							console.log("🟢 Giao diện Web đã kết nối tới Bộ não trung tâm (Port 5000)!");
-							state.mqttStatus = 'connected';
-							state.wifiStatus = 'stable';
-							if (reconnectTimer) clearTimeout(reconnectTimer);
-							render();
-						};
-
-						socket.onmessage = (event) => {
-        try {
-            const rawPayload = JSON.parse(event.data);
-            
-            // 1. Đồng bộ ban đầu khi load trang
-            if (rawPayload.type === 'INITIAL_SYNC') {
-                if (!rawPayload.data || rawPayload.data.length === 0) {
-                    // Chưa có bệnh nhân nào quẹt thẻ – hiển thị thông báo chờ
-                    patients = [];
-                    showToast(
-                        'Hệ thống trực tuyến',
-                        'Thiết bị sẵn sàng, vui lòng quẹt thẻ RFID để khởi tạo trạm giám sát...',
-                        'info'
-                    );
-                } else {
-                    rawPayload.data.forEach(remotePatient => {
-                        const existingIdx = patients.findIndex(p => p.id === remotePatient.id);
-                        const mapped = {
-                            ...remotePatient,
-                            avatar: (remotePatient.fullName || remotePatient.name || remotePatient.id)
-                                .split(' ').slice(-2).map(p => p[0]).join('').toUpperCase(),
-                            name: remotePatient.fullName || remotePatient.name || remotePatient.id,
-                            room: remotePatient.roomNumber || remotePatient.room || '---',
-                            lastUpdate: new Date(remotePatient.lastUpdate),
-                            history: remotePatient.history || { heartRate: [], spo2: [], temp: [] },
-                        };
-                        if (existingIdx !== -1) {
-                            Object.assign(patients[existingIdx], mapped);
-                        } else {
-                            patients.push(mapped);
-                        }
-                    });
-                }
-                render();
-                return;
-            }
-
-            // 2. Nhận cập nhật thời gian thực từ ESP32 gửi lên
-            if (rawPayload.type === 'PATIENT_UPDATE') {
-                const liveData = rawPayload.data;
-                const firmwareStatus = normalizeFirmwareStatus(liveData.status);
-                const index = patients.findIndex(p => p.id === liveData.id);
-
-                if (index === -1) {
-                    // ── Bệnh nhân MỚI: Quẹt thẻ lần đầu → Append dòng mới ──
-                    const newPatient = {
-                        ...liveData,
-                        id: liveData.id,
-                        name: liveData.fullName || liveData.name || liveData.id,
-                        room: liveData.roomNumber || liveData.room || '---',
-                        avatar: (liveData.fullName || liveData.name || liveData.id)
-                            .split(' ').slice(-2).map(p => p[0]).join('').toUpperCase(),
-                        status: firmwareStatus,
-                        lastUpdate: new Date(liveData.lastUpdate || Date.now()),
-                        history: { heartRate: [liveData.heartRate], spo2: [liveData.spo2], temp: [liveData.temp] },
-                        checkins: [{ type: 'Check-in', time: new Date(), place: liveData.roomNumber || liveData.room || '---' }],
-                        timeline: [{ label: 'Khởi tạo trạm', time: new Date(), note: 'Bệnh nhân quẹt thẻ RFID thành công' }],
-                        riskScore: liveData.riskScore || 0,
-                        alert: firmwareStatus !== 'IDLE',
-                        fall: firmwareStatus === 'ALERT',
-                        signalLost: !!liveData.signalLost,
-                        safe: firmwareStatus === 'IDLE',
-                        kiosk: liveData.kiosk || 'Kiosk 01',
-                        zone: firmwareStatus === 'IDLE' ? 'Within zone' : 'Alert zone',
-                        battery: liveData.battery || 100,
-                        rssi: liveData.rssi || -60,
-                        ble: liveData.signalLost ? 'Mất tín hiệu' : 'Ổn định',
-                        age: liveData.age || 0,
-                        gender: liveData.gender || '',
-                    };
-                    patients.push(newPatient);
-                    showToast('Bệnh nhân mới', `${newPatient.name} – ${newPatient.room} vừa được kết nối.`, 'info');
-                    if (!state.selectedPatientId) state.selectedPatientId = newPatient.id;
-                } else {
-                    // ── Bệnh nhân ĐÃ CÓ: Chỉ cập nhật vitals, không tạo dòng mới ──
-                    const oldData = patients[index];
-                    const updatedHistory = {
-                        heartRate: [...(oldData.history?.heartRate || []).slice(-29), liveData.heartRate],
-                        spo2:      [...(oldData.history?.spo2 || []).slice(-29),      liveData.spo2],
-                        temp:      [...(oldData.history?.temp || []).slice(-29),      liveData.temp],
-                    };
-                    patients[index] = {
-                        ...oldData,
-                        ...liveData,
-                        name: liveData.fullName || liveData.name || oldData.name,
-                        room: liveData.roomNumber || liveData.room || oldData.room,
-                        status: firmwareStatus,
-                        history: updatedHistory,
-                        lastUpdate: new Date(liveData.lastUpdate || Date.now()),
-                        alert: firmwareStatus !== 'IDLE' || !!liveData.signalLost,
-                        fall: firmwareStatus === 'ALERT',
-                        safe: firmwareStatus === 'IDLE',
-                        zone: firmwareStatus === 'IDLE' ? 'Within zone' : 'Alert zone',
-                        ble: liveData.signalLost ? 'Mất tín hiệu' : ((liveData.battery || oldData.battery) < 20 ? 'Pin yếu' : 'Ổn định'),
-                    };
-
-                    if (firmwareStatus === 'ALERT') {
-                        enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 20000 });
-                    } else if (isTransitionFirmwareStatus(firmwareStatus)) {
-                        enqueueAlert(patients[index], 'warning', { showModal: false, cooldownMs: 30000 });
-                    } else if (liveData.signalLost) {
-                        enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 30000 });
-                    }
-                }
-
-                render();
-            }
-        } catch (error) {
-            console.error("❌ Lỗi xử lý WebSocket:", error);
-        }
-    };
-
-		try {
-			const rawPayload = JSON.parse(event.data);
-
-			// 1. Đồng bộ ban đầu khi load trang
-			if (rawPayload.type === 'INITIAL_SYNC') {
-				rawPayload.data.forEach((remotePatient) => {
-					const localPatient = patients.find((patient) => patient.id === remotePatient.id);
-					if (localPatient) {
-						Object.assign(localPatient, remotePatient);
-						localPatient.lastUpdate = new Date(remotePatient.lastUpdate);
-					} else {
-						patients.push(buildPatientFromRemote(remotePatient));
-					}
-				});
-				render();
-				return;
-			}
-
-			// 2. Nhận cập nhật thời gian thực từ ESP32 gửi lên
-			if (rawPayload.type === 'PATIENT_UPDATE') {
-				const liveData = rawPayload.data;
-				const firmwareStatus = normalizeFirmwareStatus(liveData.status);
-				const index = patients.findIndex((patient) => patient.id === liveData.id);
-				let patientRecord = null;
-
-				if (index !== -1) {
-					const oldData = patients[index];
-
-					const updatedHistory = {
-						heartRate: [...oldData.history.heartRate.slice(1), liveData.heartRate],
-						spo2: [...oldData.history.spo2.slice(1), liveData.spo2],
-						temp: [...oldData.history.temp.slice(1), liveData.temp]
-					};
-
-					patientRecord = {
-						...oldData,
-						...liveData,
-						status: firmwareStatus,
-						history: updatedHistory,
-						lastUpdate: new Date(liveData.lastUpdate)
-					};
-					patients[index] = patientRecord;
-				} else {
-					patientRecord = buildPatientFromRemote(liveData);
-					patientRecord.status = firmwareStatus;
-					patients.push(patientRecord);
-				}
-
-				if (firmwareStatus === 'ALERT') {
-					enqueueAlert(patientRecord, 'critical', { showModal: true, cooldownMs: 20000 });
-				} else if (isTransitionFirmwareStatus(firmwareStatus)) {
-					enqueueAlert(patientRecord, 'warning', { showModal: false, cooldownMs: 30000 });
-				} else if (liveData.signalLost) {
-					enqueueAlert(patientRecord, 'critical', { showModal: true, cooldownMs: 30000 });
-				}
-
-				render();
-			}
-		} catch (error) {
-			console.error("❌ Lỗi xử lý WebSocket:", error);
-		}
-	};
-
-
-						socket.onclose = () => {
-							console.warn("🔴 Mất kết nối tới Backend. Tự động kết nối lại sau 5 giây...");
-							state.mqttStatus = 'degraded';
-							state.wifiStatus = 'unstable';
-							render();
-
-							// Thiết lập cơ chế Auto-Reconnect tự động khôi phục đường truyền
-							clearTimeout(reconnectTimer);
-							reconnectTimer = setTimeout(initMedPulseWebSocket, 5000);
-						};
-
-						socket.onerror = (err) => {
-							console.error("❌ Lỗi đường truyền WebSocket:", err);
-						};
-					}
-
-					// Thay thế bộ đếm cũ để vừa quản lý LocalStorage vừa duy trì đường kết nối ngầm
-					setInterval(() => {
-						if (state.authed) {
-							localStorage.setItem(STORAGE_KEY, JSON.stringify({
-								authed: state.authed,
-								screen: state.screen,
-								view: state.view,
-								selectedPatientId: state.selectedPatientId,
-								darkMode: state.darkMode,
-								soundEnabled: state.soundEnabled,
-								historyRange: state.historyRange,
-							}));
-							
-							// Nếu người dùng đã đăng nhập và kết nối chưa mở thì kích hoạt kết nối WebSocket
-							if (!socket || socket.readyState === WebSocket.CLOSED) {
-								initMedPulseWebSocket();
-							}
-						}
-					}, 2600);
-			document.addEventListener('click', (event) => {
+		document.addEventListener('click', (event) => {
 				if (!event.target.closest('[data-action="toggle-profile"]')) {
 					state.profileOpen = false;
 				}
@@ -1892,6 +1612,160 @@
 					render();
 				}
 			});
+		}
+
+
+		// WebSocket globals (phải ở scope ngoài để setInterval truy cập được)
+		const BACKEND_WS_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+			? 'ws://localhost:5000'
+			: 'wss://medpulse-dashboard.onrender.com';
+		let socket = null;
+		let reconnectTimer = null;
+
+		function initMedPulseWebSocket() {
+			if (socket && socket.readyState !== WebSocket.CLOSED) return;
+			try { socket && socket.close(); } catch(e) {}
+
+			socket = new WebSocket(BACKEND_WS_URL);
+
+			socket.onopen = () => {
+				console.log('🟢 WebSocket kết nối thành công tới Backend!');
+				state.mqttStatus = 'connected';
+				state.wifiStatus = 'stable';
+				clearTimeout(reconnectTimer);
+				render();
+			};
+
+			socket.onmessage = (event) => {
+				try {
+					const rawPayload = JSON.parse(event.data);
+
+					// 1. Đồng bộ ban đầu khi load trang
+					if (rawPayload.type === 'INITIAL_SYNC') {
+						if (!rawPayload.data || rawPayload.data.length === 0) {
+						patients = [];
+						showToast('Hệ thống trực tuyến', 'Thiết bị sẵn sàng, vui lòng quẹt thẻ RFID để khởi tạo trạm giám sát...', 'info');
+						} else {
+						rawPayload.data.forEach(remotePatient => {
+						const existingIdx = patients.findIndex(p => p.id === remotePatient.id);
+						const mapped = {
+						...remotePatient,
+						avatar: (remotePatient.fullName || remotePatient.name || remotePatient.id).split(' ').slice(-2).map(p => p[0]).join('').toUpperCase(),
+						name: remotePatient.fullName || remotePatient.name || remotePatient.id,
+						room: remotePatient.roomNumber || remotePatient.room || '---',
+						lastUpdate: new Date(remotePatient.lastUpdate),
+						history: remotePatient.history || { heartRate: [], spo2: [], temp: [] },
+						};
+						if (existingIdx !== -1) Object.assign(patients[existingIdx], mapped);
+						else patients.push(mapped);
+						});
+						}
+						render();
+						return;
+					}
+
+					// 2. Cập nhật thời gian thực từ ESP32
+					if (rawPayload.type === 'PATIENT_UPDATE') {
+						const liveData = rawPayload.data;
+						const firmwareStatus = normalizeFirmwareStatus(liveData.status);
+						const index = patients.findIndex(p => p.id === liveData.id);
+
+						if (index === -1) {
+						// Bệnh nhân MỚI → Append
+						const newPatient = {
+						...liveData,
+						name: liveData.fullName || liveData.name || liveData.id,
+						room: liveData.roomNumber || liveData.room || '---',
+						avatar: (liveData.fullName || liveData.name || liveData.id).split(' ').slice(-2).map(p => p[0]).join('').toUpperCase(),
+						status: firmwareStatus,
+						lastUpdate: new Date(liveData.lastUpdate || Date.now()),
+						history: { heartRate: [liveData.heartRate], spo2: [liveData.spo2], temp: [liveData.temp] },
+						checkins: [{ type: 'Check-in', time: new Date(), place: liveData.roomNumber || liveData.room || '---' }],
+						timeline: [{ label: 'Khởi tạo trạm', time: new Date(), note: 'Bệnh nhân quẹt thẻ RFID thành công' }],
+						riskScore: liveData.riskScore || 0,
+						alert: firmwareStatus !== 'IDLE',
+						fall: firmwareStatus === 'ALERT',
+						signalLost: !!liveData.signalLost,
+						safe: firmwareStatus === 'IDLE',
+						kiosk: liveData.kiosk || 'Kiosk 01',
+						zone: firmwareStatus === 'IDLE' ? 'Within zone' : 'Alert zone',
+						battery: liveData.battery || 100,
+						rssi: liveData.rssi || -60,
+						ble: liveData.signalLost ? 'Mất tín hiệu' : 'Ổn định',
+						age: liveData.age || 0,
+						gender: liveData.gender || '',
+						};
+						patients.push(newPatient);
+						showToast('Bệnh nhân mới', `${newPatient.name} – ${newPatient.room} vừa được kết nối.`, 'info');
+						if (!state.selectedPatientId) state.selectedPatientId = newPatient.id;
+						} else {
+						// Bệnh nhân ĐÃ CÓ → chỉ cập nhật vitals
+						const oldData = patients[index];
+						patients[index] = {
+						...oldData,
+						...liveData,
+						name: liveData.fullName || liveData.name || oldData.name,
+						room: liveData.roomNumber || liveData.room || oldData.room,
+						status: firmwareStatus,
+						history: {
+						heartRate: [...(oldData.history?.heartRate || []).slice(-29), liveData.heartRate],
+						spo2:      [...(oldData.history?.spo2 || []).slice(-29),      liveData.spo2],
+						temp:      [...(oldData.history?.temp || []).slice(-29),      liveData.temp],
+						},
+						lastUpdate: new Date(liveData.lastUpdate || Date.now()),
+						alert: firmwareStatus !== 'IDLE' || !!liveData.signalLost,
+						fall: firmwareStatus === 'ALERT',
+						safe: firmwareStatus === 'IDLE',
+						zone: firmwareStatus === 'IDLE' ? 'Within zone' : 'Alert zone',
+						ble: liveData.signalLost ? 'Mất tín hiệu' : ((liveData.battery || oldData.battery) < 20 ? 'Pin yếu' : 'Ổn định'),
+						};
+						if (firmwareStatus === 'ALERT') {
+						enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 20000 });
+						} else if (isTransitionFirmwareStatus(firmwareStatus)) {
+						enqueueAlert(patients[index], 'warning', { showModal: false, cooldownMs: 30000 });
+						} else if (liveData.signalLost) {
+						enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 30000 });
+						}
+						}
+						render();
+					}
+				} catch (error) {
+					console.error('❌ Lỗi xử lý WebSocket:', error);
+				}
+			};
+
+			socket.onclose = () => {
+				console.warn('🔴 Mất kết nối WebSocket. Thử lại sau 5 giây...');
+				state.mqttStatus = 'degraded';
+				state.wifiStatus = 'unstable';
+				render();
+				clearTimeout(reconnectTimer);
+				reconnectTimer = setTimeout(initMedPulseWebSocket, 5000);
+			};
+
+			socket.onerror = (err) => {
+				console.error('❌ Lỗi WebSocket:', err);
+			};
+		}
+
+		// Lưu localStorage + giữ kết nối WebSocket khi đã đăng nhập
+		setInterval(() => {
+			if (state.authed) {
+				localStorage.setItem(STORAGE_KEY, JSON.stringify({
+					authed: state.authed,
+					screen: state.screen,
+					view: state.view,
+					selectedPatientId: state.selectedPatientId,
+					darkMode: state.darkMode,
+					soundEnabled: state.soundEnabled,
+					historyRange: state.historyRange,
+				}));
+				if (!socket || socket.readyState === WebSocket.CLOSED) {
+					initMedPulseWebSocket();
+				}
+			}
+		}, 2600);
+
 
 		bootstrap();
 	</script>
