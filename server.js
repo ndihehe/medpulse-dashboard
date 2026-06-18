@@ -84,6 +84,8 @@ function createDefaultPatientState(id) {
         statusHistory: [{ status: 'IDLE', at: new Date().toISOString() }],
         alert:        false,
         lastUpdate:   new Date(),
+        hasRealData:  false,
+        lastMeasurementAt: null,
     };
 }
 
@@ -117,10 +119,12 @@ function loadPatientProfiles() {
         });
         console.log(` Đã load ${rows.length} hồ sơ bệnh nhân từ bảng patients`);
 
-        // Sau khi load xong profile, broadcast INITIAL_SYNC lại để web nhận ngay
-        broadcastToDashboards({
-            type: 'INITIAL_SYNC',
-            data: Object.values(patientsState).map(serializePatientState),
+        loadLatestVitalsFromDatabase(() => {
+            // Sau khi load xong profile và lần đo gần nhất, broadcast INITIAL_SYNC lại để web nhận ngay
+            broadcastToDashboards({
+                type: 'INITIAL_SYNC',
+                data: Object.values(patientsState).map(serializePatientState),
+            });
         });
     });
 }
@@ -170,6 +174,12 @@ function syncFallSafeState(patient, metric, value) {
     return false;
 }
 
+function hasMeasurementPayload(liveData) {
+    return Number.isFinite(liveData?.heartRate)
+        || Number.isFinite(liveData?.spo2)
+        || Number.isFinite(liveData?.temp);
+}
+
 // [FIX] serializePatientState — đảm bảo name/age/gender/room luôn có mặt
 function serializePatientState(patient) {
     return {
@@ -181,7 +191,73 @@ function serializePatientState(patient) {
         room:              patient.room             || null,
         bed:               patient.bed              || null,
         condition_summary: patient.condition_summary || null,
+        hasRealData:       patient.hasRealData === true,
+        lastMeasurementAt: patient.lastMeasurementAt || null,
     };
+}
+
+function applyLatestVitalsToPatientState(patient, vitals) {
+    if (!patient || !vitals) return patient;
+    patient.heartRate = Number(vitals.heartRate);
+    patient.spo2 = Number(vitals.spo2);
+    patient.temp = Number(vitals.temp);
+    patient.battery = Number(vitals.battery ?? patient.battery ?? 100);
+    patient.rssi = Number(vitals.rssi ?? patient.rssi ?? -55);
+    patient.fall = Boolean(vitals.fall);
+    patient.safe = vitals.safe !== false;
+    patient.status = normalizeFirmwareStatus(vitals.status) || patient.status || 'IDLE';
+    patient.current_status = normalizeFirmwareStatus(vitals.current_status) || patient.status;
+    patient.alertLevel = vitals.alertLevel || patient.alertLevel || 'safe';
+    patient.riskScore = Number(vitals.riskScore ?? patient.riskScore ?? 4);
+    patient.lastUpdate = vitals.time ? new Date(vitals.time) : patient.lastUpdate;
+    patient.lastMeasurementAt = vitals.time ? new Date(vitals.time).toISOString() : patient.lastMeasurementAt;
+    patient.hasRealData = true;
+    patient.ble = patient.signalLost ? 'Mất tín hiệu'
+        : patient.battery < 20 ? 'Pin yếu'
+        : 'Ổn định';
+    return patient;
+}
+
+function queryLatestVitals(callback) {
+    const query = `
+        SELECT vl.patient_id AS id,
+               vl.heart_rate AS heartRate,
+               vl.spo2,
+               vl.temp,
+               vl.battery,
+               vl.rssi,
+               vl.fall_status AS fall,
+               vl.is_safe AS safe,
+               vl.device_status AS status,
+               vl.current_status,
+               vl.status_level AS alertLevel,
+               vl.risk_score AS riskScore,
+               vl.recorded_at AS time
+        FROM vitals_log vl
+        INNER JOIN (
+            SELECT patient_id, MAX(recorded_at) AS latest_time
+            FROM vitals_log
+            GROUP BY patient_id
+        ) latest
+            ON latest.patient_id = vl.patient_id
+           AND latest.latest_time = vl.recorded_at
+    `;
+    db.query(query, callback);
+}
+
+function loadLatestVitalsFromDatabase(callback = () => {}) {
+    queryLatestVitals((err, rows) => {
+        if (err) {
+            console.error(' Lỗi load lần đo gần nhất từ DB:', err.message);
+            callback(err);
+            return;
+        }
+        rows.forEach(row => {
+            applyLatestVitalsToPatientState(ensurePatientState(row.id), row);
+        });
+        console.log(` Đã load ${rows.length} lần đo gần nhất từ vitals_log`);
+        callback(null, rows);
+    });
 }
 
 // =========================================================================
@@ -233,10 +309,17 @@ function processPatientMetricsCalculation(patientId) {
     return patient;
 }
 
-function publishPatientUpdate(patientId) {
+function publishPatientUpdate(patientId, options = {}) {
+    const { saveToDatabase = true, markAsMeasurement = saveToDatabase } = options;
     const data = processPatientMetricsCalculation(patientId);
+    if (markAsMeasurement) {
+        data.hasRealData = true;
+        data.lastMeasurementAt = data.lastUpdate.toISOString();
+    }
     broadcastToDashboards({ type: 'PATIENT_UPDATE', data: serializePatientState(data) });
-    saveVitalsToDatabase(data);
+    if (saveToDatabase) {
+        saveVitalsToDatabase(data);
+    }
 }
 
 function markPatientOffline(patientId) {
@@ -248,7 +331,7 @@ function markPatientOffline(patientId) {
     patient.alert       = true;
     patient.ble         = 'Mất tín hiệu';
     patient.lastUpdate  = new Date();
-    publishPatientUpdate(patientId);
+    publishPatientUpdate(patientId, { saveToDatabase: false, markAsMeasurement: false });
 }
 
 setInterval(() => {
@@ -329,6 +412,7 @@ mqttClient.on('message', (topic, message) => {
         lastSeenByPatient.set(patientId, Date.now());
 
         const p = patientsState[patientId];
+        const isMeasurementPayload = hasMeasurementPayload(liveData);
 
         // Đồng bộ sinh hiệu
         if (Number.isFinite(liveData.heartRate)) p.heartRate = Math.round(liveData.heartRate);
@@ -346,12 +430,17 @@ mqttClient.on('message', (topic, message) => {
         }
 
         if (!p.signalLost) {
-            publishPatientUpdate(patientId);
-            console.log(` Đã cập nhật + lưu DB cho: ${patientId}`);
+            publishPatientUpdate(patientId, {
+                saveToDatabase: isMeasurementPayload,
+                markAsMeasurement: isMeasurementPayload,
+            });
+            console.log(isMeasurementPayload
+                ? ` Đã cập nhật + lưu DB cho: ${patientId}`
+                : ` Đã cập nhật trạng thái UI, không lưu DB vì không có sinh hiệu đo: ${patientId}`);
         } else {
             const updated = processPatientMetricsCalculation(patientId);
             broadcastToDashboards({ type: 'PATIENT_UPDATE', data: serializePatientState(updated) });
-            console.log(`📡 [Mất tín hiệu] Cập nhật UI cho: ${patientId}`);
+            console.log(` [Mất tín hiệu] Cập nhật UI cho: ${patientId}`);
         }
 
     } catch (error) {
@@ -387,17 +476,17 @@ function saveVitalsToDatabase(p) {
         p.riskScore      || 4,
     ];
 
-    // THAY THẾ BẰNG ĐOẠN CODE NÀY:
+    
         db.query(query, values, (err, results) => {
     if (err) {
         // Nếu phát hiện mất kết nối
         if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET') {
-            console.log(`🔄 Mất kết nối DB khi lưu dữ liệu cho ${values[0]}. Đang xin một kết nối mới để thử lại...`);
+            console.log(` Mất kết nối DB khi lưu dữ liệu cho ${values[0]}. Đang xin một kết nối mới để thử lại...`);
             
             // Ép Pool phải tạo hoặc cấp một kết nối mới hoàn toàn sạch sẽ
             db.getConnection((connErr, connection) => {
                 if (connErr) {
-                    console.error(`❌ Không thể tạo kết nối mới cho ${values[0]}:`, connErr.message);
+                    console.error(` Không thể tạo kết nối mới cho ${values[0]}:`, connErr.message);
                     return;
                 }
                 
@@ -407,20 +496,20 @@ function saveVitalsToDatabase(p) {
                     connection.release(); 
                     
                     if (retryErr) {
-                        console.error(`❌ Thử lại bằng kết nối mới vẫn thất bại cho ${values[0]}:`, retryErr.message);
+                        console.error(` Thử lại bằng kết nối mới vẫn thất bại cho ${values[0]}:`, retryErr.message);
                     } else {
-                        console.log(`✅ Thử lại THÀNH CÔNG bằng kết nối mới! Đã lưu dữ liệu cho: ${values[0]}`);
+                        console.log(` Thử lại THÀNH CÔNG bằng kết nối mới! Đã lưu dữ liệu cho: ${values[0]}`);
                     }
                 });
             });
             return;
         }
         
-        console.error(`❌ Lỗi lưu DB bệnh nhân ${values[0]}:`, err.message);
+        console.error(` Lỗi lưu DB bệnh nhân ${values[0]}:`, err.message);
         console.error('   SQL values:', JSON.stringify(values));
         return;
     }
-    console.log(`✅ Đã cập nhật + lưu DB thành công cho: ${values[0]}`);
+    console.log(` Đã cập nhật + lưu DB thành công cho: ${values[0]}`);
 });
 }
 
@@ -436,20 +525,26 @@ app.get('/api/patients', (req, res) => {
             rows.forEach(r => { profileMap[r.id] = r; });
         }
 
-        const result = Object.values(patientsState).map(p => {
-            const profile = profileMap[p.id] || {};
-            return {
-                ...serializePatientState(p),
-                name:              profile.name              || p.name    || p.id,
-                age:               profile.age               ?? p.age    ?? null,
-                gender:            profile.gender            || p.gender  || null,
-                room:              profile.room              || p.room    || null,
-                bed:               profile.bed               || p.bed     || null,
-                condition_summary: profile.condition_summary || p.condition_summary || null,
-            };
-        });
+        queryLatestVitals((latestErr, latestRows) => {
+            if (!latestErr && latestRows) {
+                latestRows.forEach(row => applyLatestVitalsToPatientState(ensurePatientState(row.id), row));
+            }
 
-        res.json(result);
+            const result = Object.values(patientsState).map(p => {
+                const profile = profileMap[p.id] || {};
+                return {
+                    ...serializePatientState(p),
+                    name:              profile.name              || p.name    || p.id,
+                    age:               profile.age               ?? p.age    ?? null,
+                    gender:            profile.gender            || p.gender  || null,
+                    room:              profile.room              || p.room    || null,
+                    bed:               profile.bed               || p.bed     || null,
+                    condition_summary: profile.condition_summary || p.condition_summary || null,
+                };
+            });
+
+            res.json(result);
+        });
     });
 });
 
@@ -461,14 +556,38 @@ app.get('/api/patients/:id', (req, res) => {
 
     db.query('SELECT * FROM patients WHERE id = ?', [id], (err, rows) => {
         const profile = (!err && rows && rows[0]) ? rows[0] : {};
-        res.json({
-            ...serializePatientState(patient),
-            name:              profile.name              || patient.name    || id,
-            age:               profile.age               ?? patient.age    ?? null,
-            gender:            profile.gender            || patient.gender  || null,
-            room:              profile.room              || patient.room    || null,
-            bed:               profile.bed               || patient.bed     || null,
-            condition_summary: profile.condition_summary || patient.condition_summary || null,
+        const latestQuery = `
+            SELECT patient_id AS id,
+                   heart_rate AS heartRate,
+                   spo2,
+                   temp,
+                   battery,
+                   rssi,
+                   fall_status AS fall,
+                   is_safe AS safe,
+                   device_status AS status,
+                   current_status,
+                   status_level AS alertLevel,
+                   risk_score AS riskScore,
+                   recorded_at AS time
+            FROM vitals_log
+            WHERE patient_id = ?
+            ORDER BY recorded_at DESC
+            LIMIT 1
+        `;
+        db.query(latestQuery, [id], (latestErr, latestRows) => {
+            if (!latestErr && latestRows && latestRows[0]) {
+                applyLatestVitalsToPatientState(patient, latestRows[0]);
+            }
+            res.json({
+                ...serializePatientState(patient),
+                name:              profile.name              || patient.name    || id,
+                age:               profile.age               ?? patient.age    ?? null,
+                gender:            profile.gender            || patient.gender  || null,
+                room:              profile.room              || patient.room    || null,
+                bed:               profile.bed               || patient.bed     || null,
+                condition_summary: profile.condition_summary || patient.condition_summary || null,
+            });
         });
     });
 });

@@ -216,6 +216,32 @@
 			return `${Math.floor(minutesAgo / 60)} giờ trước`;
 		}
 
+		function formatDateTimeFull(date) {
+			if (!date) return 'Chưa có dữ liệu';
+			const value = date instanceof Date ? date : new Date(date);
+			if (Number.isNaN(value.getTime())) return 'Chưa có dữ liệu';
+			return new Intl.DateTimeFormat('vi-VN', {
+				hour: '2-digit',
+				minute: '2-digit',
+				second: '2-digit',
+				day: '2-digit',
+				month: '2-digit',
+				year: 'numeric',
+			}).format(value);
+		}
+		function hasMeasurementData(patient) {
+			return patient?.hasRealData === true || Boolean(patient?.lastMeasurementAt);
+		}
+		function latestMeasurementDate(patient) {
+			if (!hasMeasurementData(patient)) return null;
+			return patient.lastMeasurementAt ? new Date(patient.lastMeasurementAt) : patient.lastUpdate;
+		}
+		function vitalText(patient, key, suffix = '') {
+			if (!hasMeasurementData(patient)) return 'Chưa có dữ liệu';
+			const value = patient?.[key];
+			return value === null || value === undefined || value === '' ? 'Chưa có dữ liệu' : `${value}${suffix}`;
+		}
+
 		function enqueueAlert(patient, type, options = {}) {
 			const { showModal = true, cooldownMs = 0 } = options;
 			const now = Date.now();
@@ -753,14 +779,15 @@
 			const warningCount = patients.filter((patient) => isTransitionFirmwareStatus(patient.status)).length;
 			const dangerCount = patients.filter((patient) => isCriticalFirmwareStatus(patient.status)).length;
 			const fallCount = patients.filter((patient) => isCriticalFirmwareStatus(patient.status) || patient.fall).length;
-			const avgHeart = patients.length ? Math.round(patients.reduce((sum, patient) => sum + patient.heartRate, 0) / patients.length) : 0;
-			const avgTemp = patients.length ? (patients.reduce((sum, patient) => sum + patient.temp, 0) / patients.length).toFixed(1) : '0.0';
-			const avgSpO2 = patients.length ? Math.round(patients.reduce((sum, patient) => sum + patient.spo2, 0) / patients.length) : 0;
-			const heartSeries = patients.length
-				? patients.reduce((acc, p) => p.history?.heartRate?.forEach((v, i) => { acc[i] = (acc[i] || 0) + v / patients.length; }) || acc, Array(18).fill(0)).map(Math.round)
+			const measuredPatients = patients.filter(hasMeasurementData);
+			const avgHeart = measuredPatients.length ? Math.round(measuredPatients.reduce((sum, patient) => sum + patient.heartRate, 0) / measuredPatients.length) : 0;
+			const avgTemp = measuredPatients.length ? (measuredPatients.reduce((sum, patient) => sum + patient.temp, 0) / measuredPatients.length).toFixed(1) : '0.0';
+			const avgSpO2 = measuredPatients.length ? Math.round(measuredPatients.reduce((sum, patient) => sum + patient.spo2, 0) / measuredPatients.length) : 0;
+			const heartSeries = measuredPatients.length
+				? measuredPatients.reduce((acc, p) => p.history?.heartRate?.forEach((v, i) => { acc[i] = (acc[i] || 0) + v / measuredPatients.length; }) || acc, Array(18).fill(0)).map(Math.round)
 				: Array(18).fill(0);
-			const tempSeries = patients.length
-				? patients.reduce((acc, p) => p.history?.temp?.forEach((v, i) => { acc[i] = (acc[i] || 0) + v / patients.length; }) || acc, Array(18).fill(0)).map(v => Number(v.toFixed(1)))
+			const tempSeries = measuredPatients.length
+				? measuredPatients.reduce((acc, p) => p.history?.temp?.forEach((v, i) => { acc[i] = (acc[i] || 0) + v / measuredPatients.length; }) || acc, Array(18).fill(0)).map(v => Number(v.toFixed(1)))
 				: Array(18).fill(0);
 			const alertPatients = patients.filter((patient) => !isNormalFirmwareStatus(patient.status)).slice(0, 4);
 			const criticalItems = [
@@ -969,20 +996,20 @@
 												</button>
 											</td>
 											<td class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">${patient.id}</td>
-											<td class="px-5 py-4"><span class="rounded-full ${patient.heartRate > 110 || patient.heartRate < 55 ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'} px-3 py-1 text-sm font-bold">${patient.heartRate}</span></td>
-											<td class="px-5 py-4"><span class="rounded-full ${patient.spo2 < 94 ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'} px-3 py-1 text-sm font-bold">${patient.spo2}%</span></td>
-											<td class="px-5 py-4 font-bold ${patient.temp > 37.6 ? 'text-red-600 dark:text-red-300' : 'text-slate-700 dark:text-slate-200'}">${patient.temp}°C</td>
+											<td class="px-5 py-4"><span class="rounded-full ${hasMeasurementData(patient) && (patient.heartRate > 110 || patient.heartRate < 55) ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'} px-3 py-1 text-sm font-bold">${vitalText(patient, 'heartRate')}</span></td>
+											<td class="px-5 py-4"><span class="rounded-full ${hasMeasurementData(patient) && patient.spo2 < 94 ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'} px-3 py-1 text-sm font-bold">${vitalText(patient, 'spo2', '%')}</span></td>
+											<td class="px-5 py-4 font-bold ${hasMeasurementData(patient) && patient.temp > 37.6 ? 'text-red-600 dark:text-red-300' : 'text-slate-700 dark:text-slate-200'}">${vitalText(patient, 'temp', '°C')}</td>
 											<td class="px-5 py-4">${statusBadge(patient.status)}</td>
 											<td class="px-5 py-4">
-												<div class="w-24">${progressBar(patient.battery, 100, patient.battery < 20 ? 'danger' : patient.battery < 45 ? 'warning' : 'mint')}</div>
-												<div class="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">${patient.battery}%</div>
+												<div class="w-24">${hasMeasurementData(patient) ? progressBar(patient.battery, 100, patient.battery < 20 ? 'danger' : patient.battery < 45 ? 'warning' : 'mint') : progressBar(0, 100, 'warning')}</div>
+												<div class="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">${vitalText(patient, 'battery', '%')}</div>
 											</td>
 											<td class="px-5 py-4">
 												<div class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ${patient.fall ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'}">
 													<span class="h-1.5 w-1.5 rounded-full bg-current"></span>${patient.fall ? 'FALL' : 'No'}
 												</div>
 											</td>
-											<td class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">${formatRelative((Date.now() - patient.lastUpdate.getTime()) / 60000)}</td>
+											<td class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">${formatDateTimeFull(latestMeasurementDate(patient))}</td>
 										</tr>
 									`).join('')}
 								</tbody>
@@ -1033,15 +1060,15 @@
 						<div class="space-y-6">
 							<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 								${[
-									['Heart rate', `${patient.heartRate} bpm`, patient.heartRate > 110 || patient.heartRate < 55 ? 'red' : 'blue'],
-									['SpO₂', `${patient.spo2}%`, patient.spo2 < 94 ? 'amber' : 'mint'],
-									['Temperature', `${patient.temp}°C`, patient.temp > 37.6 ? 'red' : 'mint'],
-									['Battery', `${patient.battery}%`, patient.battery < 20 ? 'red' : patient.battery < 45 ? 'amber' : 'mint'],
+									['Heart rate', vitalText(patient, 'heartRate', ' bpm'), hasMeasurementData(patient) && (patient.heartRate > 110 || patient.heartRate < 55) ? 'red' : 'blue'],
+									['SpO₂', vitalText(patient, 'spo2', '%'), hasMeasurementData(patient) && patient.spo2 < 94 ? 'amber' : 'mint'],
+									['Temperature', vitalText(patient, 'temp', '°C'), hasMeasurementData(patient) && patient.temp > 37.6 ? 'red' : 'mint'],
+									['Battery', vitalText(patient, 'battery', '%'), hasMeasurementData(patient) && patient.battery < 20 ? 'red' : hasMeasurementData(patient) && patient.battery < 45 ? 'amber' : 'mint'],
 								].map(([label, value, tone]) => `
 									<div class="card rounded-[26px] p-4 shadow-soft">
 										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${label}</div>
 										<div class="mt-2 text-3xl font-black ${tone === 'red' ? 'text-red-600 dark:text-red-300' : tone === 'amber' ? 'text-amber-600 dark:text-amber-300' : tone === 'mint' ? 'text-emerald-600 dark:text-emerald-300' : 'text-brand-600 dark:text-brand-300'}">${value}</div>
-										<div class="mt-3">${progressBar(label === 'Battery' ? patient.battery : label === 'SpO₂' ? patient.spo2 : label === 'Temperature' ? Math.round((patient.temp / 40) * 100) : clamp(patient.heartRate, 0, 150), label === 'Temperature' ? 100 : label === 'Heart rate' ? 150 : 100, tone === 'red' ? 'danger' : tone === 'amber' ? 'warning' : 'mint')}</div>
+										<div class="mt-3">${progressBar(!hasMeasurementData(patient) ? 0 : label === 'Battery' ? patient.battery : label === 'SpO₂' ? patient.spo2 : label === 'Temperature' ? Math.round((patient.temp / 40) * 100) : clamp(patient.heartRate, 0, 150), label === 'Temperature' ? 100 : label === 'Heart rate' ? 150 : 100, tone === 'red' ? 'danger' : tone === 'amber' ? 'warning' : 'mint')}</div>
 									</div>
 								`).join('')}
 							</div>
@@ -1080,9 +1107,9 @@
 								<div class="mt-1 text-2xl font-black tracking-tight">Hồ sơ và thiết bị</div>
 								<div class="mt-5 grid gap-4 sm:grid-cols-2">
 									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">BLE</div><div class="mt-2 text-lg font-black ${patient.signalLost ? 'text-red-600 dark:text-red-300' : 'text-emerald-600 dark:text-emerald-300'}">${patient.ble}</div></div>
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">RSSI</div><div class="mt-2 text-lg font-black text-slate-900 dark:text-white">${patient.rssi} dBm</div></div>
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Wearable battery</div><div class="mt-2 text-lg font-black text-slate-900 dark:text-white">${patient.battery}%</div></div>
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Last update</div><div class="mt-2 text-lg font-black text-slate-900 dark:text-white">${formatTime(patient.lastUpdate)}</div></div>
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">RSSI</div><div class="mt-2 text-lg font-black text-slate-900 dark:text-white">${vitalText(patient, 'rssi', ' dBm')}</div></div>
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Wearable battery</div><div class="mt-2 text-lg font-black text-slate-900 dark:text-white">${vitalText(patient, 'battery', '%')}</div></div>
+									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Last measurement</div><div class="mt-2 text-lg font-black text-slate-900 dark:text-white">${formatDateTimeFull(latestMeasurementDate(patient))}</div></div>
 								</div>
 								<div class="mt-5 rounded-[24px] border border-slate-200 bg-gradient-to-br from-brand-50 via-white to-emerald-50 p-4 dark:border-slate-800 dark:from-brand-500/10 dark:via-slate-950 dark:to-emerald-500/10">
 									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Risk score</div>
@@ -1671,6 +1698,9 @@
 				patients = activePatients.map(remotePatient => {
 					const patientName = remotePatient.fullName || remotePatient.name || remotePatient.id || 'Unknown';
 					const isDefaultData = isDefaultPatientData(remotePatient);
+					const hasRealData = remotePatient.hasRealData === true || Boolean(remotePatient.lastMeasurementAt) || !isDefaultData;
+					const lastMeasurementAt = remotePatient.lastMeasurementAt || (hasRealData ? remotePatient.lastUpdate : null);
+					const lastUpdate = lastMeasurementAt || remotePatient.lastUpdate || Date.now();
 					return {
 						...remotePatient,
 						avatar: patientName.split(' ').slice(-2).map(p => p[0]).join('').toUpperCase() || 'P',
@@ -1679,13 +1709,14 @@
 						kiosk: remotePatient.kiosk || 'Kiosk 01',
 						status: remotePatient.status || remotePatient.current_status || 'IDLE',
 						alertLevel: remotePatient.alertLevel || 'safe',
-						lastUpdate: new Date(remotePatient.lastUpdate || Date.now()),
+						lastUpdate: new Date(lastUpdate),
+						lastMeasurementAt,
 						// Nếu dữ liệu là mặc định ảo, chỉ khởi tạo mảy trống. Chờ MQTT gửi dữ liệu thực
-						history: isDefaultData 
+						history: !hasRealData 
 							? { heartRate: [], spo2: [], temp: [] }
 							: remotePatient.history || { heartRate: [remotePatient.heartRate || 75], spo2: [remotePatient.spo2 || 98], temp: [remotePatient.temp || 36.5] },
-						hasRealData: !isDefaultData,
-						checkins: [{ type: 'Check-in', time: new Date(remotePatient.lastUpdate || Date.now()), place: remotePatient.room || 'Room N/A' }],
+						hasRealData,
+						checkins: [{ type: hasRealData ? 'Latest measurement' : 'Check-in', time: new Date(lastUpdate), place: remotePatient.room || 'Room N/A' }],
 						timeline: [{ label: 'Hệ thống khởi tạo', time: new Date(remotePatient.lastUpdate || Date.now()), note: 'Bệnh nhân được tải từ cơ sở dữ liệu' }],
 						riskScore: remotePatient.riskScore || 4,
 						alert: (remotePatient.status || remotePatient.current_status || 'IDLE') !== 'IDLE',
@@ -1756,13 +1787,17 @@
 								const existingIdx = patients.findIndex(p => p.id === remotePatient.id);
 								const patientName = remotePatient.fullName || remotePatient.name || remotePatient.id;
 								const isDefaultData = isDefaultPatientData(remotePatient);
+								const hasRealData = remotePatient.hasRealData === true || Boolean(remotePatient.lastMeasurementAt) || !isDefaultData;
+								const lastMeasurementAt = remotePatient.lastMeasurementAt || (hasRealData ? remotePatient.lastUpdate : null);
+								const lastUpdate = lastMeasurementAt || remotePatient.lastUpdate || Date.now();
 								const mapped = {
 									...remotePatient,
 									avatar: patientName.split(' ').slice(-2).map(p => p[0]).join('').toUpperCase() || 'P',
 									name: patientName,
 									room: remotePatient.roomNumber || remotePatient.room || '---',
-									lastUpdate: new Date(remotePatient.lastUpdate || Date.now()),
-									hasRealData: !isDefaultData,
+									lastUpdate: new Date(lastUpdate),
+									lastMeasurementAt,
+									hasRealData,
 									// Chỉ dùng lịch sử thực, không tạo dữ liệu ảo
 									history: {
 										heartRate: (remotePatient.history?.heartRate && remotePatient.history.heartRate.length > 0) ? remotePatient.history.heartRate : [],
@@ -1786,6 +1821,7 @@
 						const liveData = rawPayload.data;
 						const firmwareStatus = normalizeFirmwareStatus(liveData.status);
 						const index = patients.findIndex(p => p.id === liveData.id);
+						const liveMeasurementAt = liveData.lastMeasurementAt || liveData.lastUpdate || new Date().toISOString();
 
 						if (index === -1) {
 						// Bệnh nhân MỚI → Append
@@ -1795,7 +1831,9 @@
 						room: liveData.roomNumber || liveData.room || '---',
 						avatar: (liveData.fullName || liveData.name || liveData.id).split(' ').slice(-2).map(p => p[0]).join('').toUpperCase(),
 						status: firmwareStatus,
-						lastUpdate: new Date(liveData.lastUpdate || Date.now()),
+						lastUpdate: new Date(liveMeasurementAt),
+						lastMeasurementAt: liveMeasurementAt,
+						hasRealData: true,
 						history: { heartRate: [liveData.heartRate, liveData.heartRate], spo2: [liveData.spo2, liveData.spo2], temp: [liveData.temp, liveData.temp] },
 						checkins: [{ type: 'Check-in', time: new Date(), place: liveData.roomNumber || liveData.room || '---' }],
 						timeline: [{ label: 'Khởi tạo trạm', time: new Date(), note: 'Bệnh nhân quẹt thẻ RFID thành công' }],
@@ -1829,7 +1867,9 @@
 						spo2:      [...(oldData.history?.spo2 || []).slice(-29),      liveData.spo2],
 						temp:      [...(oldData.history?.temp || []).slice(-29),      liveData.temp],
 						},
-						lastUpdate: new Date(liveData.lastUpdate || Date.now()),
+						lastUpdate: new Date(liveMeasurementAt),
+						lastMeasurementAt: liveMeasurementAt,
+						hasRealData: true,
 						alert: firmwareStatus !== 'IDLE' || !!liveData.signalLost,
 						fall: firmwareStatus === 'ALERT',
 						safe: firmwareStatus === 'IDLE',
