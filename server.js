@@ -218,6 +218,27 @@ function applyLatestVitalsToPatientState(patient, vitals) {
     return patient;
 }
 
+function resetPatientMeasurementState(patient) {
+    if (!patient) return patient;
+    patient.heartRate = 75;
+    patient.spo2 = 98;
+    patient.temp = 36.5;
+    patient.battery = 100;
+    patient.rssi = -55;
+    patient.safe = true;
+    patient.fall = false;
+    patient.signalLost = false;
+    patient.ble = 'Ổn định';
+    patient.riskScore = 4;
+    patient.status = 'IDLE';
+    patient.current_status = 'IDLE';
+    patient.alertLevel = 'safe';
+    patient.alert = false;
+    patient.hasRealData = false;
+    patient.lastMeasurementAt = null;
+    return patient;
+}
+
 function queryLatestVitals(callback) {
     const query = `
         SELECT vl.patient_id AS id,
@@ -252,6 +273,7 @@ function loadLatestVitalsFromDatabase(callback = () => {}) {
             callback(err);
             return;
         }
+        Object.values(patientsState).forEach(resetPatientMeasurementState);
         rows.forEach(row => {
             applyLatestVitalsToPatientState(ensurePatientState(row.id), row);
         });
@@ -527,6 +549,7 @@ app.get('/api/patients', (req, res) => {
 
         queryLatestVitals((latestErr, latestRows) => {
             if (!latestErr && latestRows) {
+                Object.values(patientsState).forEach(resetPatientMeasurementState);
                 latestRows.forEach(row => applyLatestVitalsToPatientState(ensurePatientState(row.id), row));
             }
 
