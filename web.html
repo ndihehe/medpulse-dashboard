@@ -14,8 +14,8 @@
 							sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui'],
 						},
 						boxShadow: {
-							soft: '0 18px 50px rgba(15, 23, 42, 0.08)',
-							glow: '0 0 0 1px rgba(59, 130, 246, 0.12), 0 20px 40px rgba(56, 189, 248, 0.12)',
+							soft: '0 8px 24px rgba(15, 23, 42, 0.06)',
+							glow: '0 0 0 1px rgba(37, 99, 235, 0.14), 0 12px 28px rgba(37, 99, 235, 0.18)',
 						},
 						colors: {
 							brand: {
@@ -28,43 +28,15 @@
 								600: '#157be6',
 								700: '#115fb8',
 							},
-							mint: {
-								50: '#effcf4',
-								100: '#d9f8e5',
-								200: '#b7efd0',
-								300: '#86e0b1',
-								400: '#4fca8a',
-								500: '#20b46d',
-							},
 						},
 						keyframes: {
-							floaty: {
-								'0%, 100%': { transform: 'translateY(0px)' },
-								'50%': { transform: 'translateY(-6px)' },
-							},
 							pulseDanger: {
 								'0%, 100%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.45)' },
 								'50%': { transform: 'scale(1.02)', boxShadow: '0 0 0 18px rgba(239, 68, 68, 0)' },
 							},
-							shimmer: {
-								'0%': { backgroundPosition: '-150% 0' },
-								'100%': { backgroundPosition: '150% 0' },
-							},
-							slideIn: {
-								'0%': { opacity: '0', transform: 'translateY(14px)' },
-								'100%': { opacity: '1', transform: 'translateY(0)' },
-							},
-							pop: {
-								'0%': { opacity: '0', transform: 'scale(0.94)' },
-								'100%': { opacity: '1', transform: 'scale(1)' },
-							},
 						},
 						animation: {
-							floaty: 'floaty 7s ease-in-out infinite',
 							pulseDanger: 'pulseDanger 1.2s ease-in-out infinite',
-							shimmer: 'shimmer 1.3s linear infinite',
-							slideIn: 'slideIn 0.45s ease-out both',
-							pop: 'pop 0.24s ease-out both',
 						},
 					},
 				},
@@ -77,18 +49,25 @@
 	<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 	<style>
 		:root {
-			--bg: 249 250 255;
+			--bg: 248 250 252;
 			--panel: 255 255 255;
-			--panel-2: 244 248 252;
+			--panel-2: 241 245 249;
 			--text: 15 23 42;
 			--muted: 96 110 132;
 			--border: 226 232 240;
 			--shadow: 15 23 42;
+			--radius-sm: 12px;
+			--radius-md: 16px;
+			--radius-lg: 24px;
+			--brand: 37 99 235;
+			--safe: 22 101 52;
+			--warning: 180 83 9;
+			--danger: 185 28 28;
 		}
 		.dark {
-			--bg: 8 15 30;
-			--panel: 13 21 36;
-			--panel-2: 17 28 47;
+			--bg: 2 6 23;
+			--panel: 15 23 42;
+			--panel-2: 30 41 59;
 			--text: 238 243 255;
 			--muted: 148 163 184;
 			--border: 35 47 72;
@@ -100,38 +79,23 @@
 		body {
 			margin: 0;
 			font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui;
-			background:
-				radial-gradient(circle at top left, rgba(59, 130, 246, 0.14), transparent 28%),
-				radial-gradient(circle at top right, rgba(32, 180, 109, 0.12), transparent 24%),
-				linear-gradient(180deg, rgb(var(--bg)) 0%, rgb(var(--bg)) 100%);
+			background: rgb(var(--bg));
 			color: rgb(var(--text));
 			transition: background 0.35s ease, color 0.35s ease;
 		}
 		.glass {
-			background: rgba(var(--panel), 0.78);
-			backdrop-filter: blur(18px);
-			-webkit-backdrop-filter: blur(18px);
-			border: 1px solid rgba(var(--border), 0.55);
+			background: rgba(var(--panel), 0.92);
+			backdrop-filter: blur(12px);
+			-webkit-backdrop-filter: blur(12px);
+			border: 1px solid rgba(var(--border), 0.8);
 		}
 		.card {
 			background: rgb(var(--panel));
-			border: 1px solid rgba(var(--border), 0.7);
-			box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
-		}
-		.soft-grid {
-			background-image:
-				linear-gradient(to right, rgba(148,163,184,0.12) 1px, transparent 1px),
-				linear-gradient(to bottom, rgba(148,163,184,0.12) 1px, transparent 1px);
-			background-size: 20px 20px;
+			border: 1px solid rgba(var(--border), 0.9);
+			box-shadow: none;
 		}
 		.noise {
-			position: absolute;
-			inset: 0;
-			opacity: 0.16;
-			mix-blend-mode: soft-light;
-			pointer-events: none;
-			background-image: radial-gradient(rgba(255,255,255,0.95) 0.6px, transparent 0.6px);
-			background-size: 12px 12px;
+			display: none;
 		}
 		.table-scroll::-webkit-scrollbar,
 		.hide-scrollbar::-webkit-scrollbar {
@@ -144,15 +108,14 @@
 			border-radius: 999px;
 		}
 		.sticky-blur {
-			background: rgba(var(--bg), 0.72);
-			backdrop-filter: blur(14px);
+			background: rgba(var(--panel), 0.95);
+			backdrop-filter: blur(10px);
 		}
 		.pulse-critical {
 			animation: pulseDanger 1.2s ease-in-out infinite;
 		}
 		.skeleton {
-			background: linear-gradient(90deg, rgba(148,163,184,0.12) 25%, rgba(148,163,184,0.22) 37%, rgba(148,163,184,0.12) 63%);
-			background-size: 400% 100%;
+			background: rgb(var(--panel-2));
 		}
 	</style>
 </head>
@@ -341,50 +304,39 @@
 		}
 
 		function chartCard(title, series, unit, accent, extra = '') {
-    // THÊM DÒNG NÀY: Nếu mảng rỗng hoặc có ít hơn 2 phần tử, gán mảng tạm [0,0] để tránh lỗi SVG
-				const validSeries = (!series || series.length < 2) ? [0, 0] : series;
-				const isEmpty = !series || series.length === 0;
+			const validSeries = (!series || series.length < 2) ? [0, 0] : series;
+			const isEmpty = !series || series.length === 0;
+			const width = 760;
+			const height = 240;
+			const points = linePath(validSeries, width, height, 24);
+			const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point[0]} ${point[1]}`).join(' ');
+			const fill = `${path} L ${width - 24} ${height - 24} L 24 ${height - 24} Z`;
+			const min = Math.min(...validSeries);
+			const max = Math.max(...validSeries);
+			const chartColor = accent.includes('emerald') ? '#16a34a' : accent.includes('red') ? '#dc2626' : accent.includes('amber') ? '#d97706' : '#2563eb';
+			const chartFill = accent.includes('emerald') ? 'rgba(22,163,74,0.14)' : accent.includes('red') ? 'rgba(220,38,38,0.14)' : accent.includes('amber') ? 'rgba(217,119,6,0.14)' : 'rgba(37,99,235,0.12)';
 
-				const width = 760;
-				const height = 240;
-				// SỬA CHỮ series THÀNH validSeries Ở 3 DÒNG DƯỚI ĐÂY:
-				const points = linePath(validSeries, width, height, 24);
-				const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point[0]} ${point[1]}`).join(' ');
-				const fill = `${path} L ${width - 24} ${height - 24} L 24 ${height - 24} Z`;
-				const min = Math.min(...validSeries);
-				const max = Math.max(...validSeries);
-
-				return `
-				<div class="card rounded-[28px] p-5 md:p-6 shadow-soft animate-slideIn">
-					<div class="flex items-start justify-between gap-4 mb-4">
+			return `
+				<div class="card rounded-[16px] p-5 md:p-6">
+					<div class="mb-4 flex items-start justify-between gap-4">
 						<div>
 							<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${title}</div>
-							<div class="mt-1 text-2xl font-extrabold tracking-tight">${isEmpty ? '---' : validSeries[validSeries.length - 1]}<span class="ml-1 text-sm font-semibold text-slate-500">${unit}</span></div>
+							<div class="mt-1 text-2xl font-bold tracking-tight">${isEmpty ? '---' : validSeries[validSeries.length - 1]}<span class="ml-1 text-sm font-semibold text-slate-500">${unit}</span></div>
 						</div>
 						<div class="text-right">
 							<div class="text-xs uppercase tracking-[0.24em] text-slate-400">Độ biến thiên</div>
 							<div class="mt-1 text-sm font-semibold ${accent}">${isEmpty ? 'Chờ dữ liệu...' : `${min} - ${max} ${unit}`}</div>
 						</div>
 					</div>
-					<svg viewBox="0 0 ${width} ${height}" class="w-full h-56 rounded-[24px] bg-gradient-to-b from-slate-50/80 to-white dark:from-slate-900/70 dark:to-slate-950 overflow-hidden flex items-center justify-center">
-						<defs>
-							<linearGradient id="${title.replace(/\s+/g, '-')}-line" x1="0" x2="1" y1="0" y2="0">
-								<stop offset="0%" stop-color="${accent.includes('emerald') ? '#20b46d' : accent.includes('red') ? '#ef4444' : '#2196ff'}" />
-								<stop offset="100%" stop-color="${accent.includes('emerald') ? '#86efac' : accent.includes('red') ? '#f97316' : '#67e8f9'}" />
-							</linearGradient>
-							<linearGradient id="${title.replace(/\s+/g, '-')}-fill" x1="0" x2="0" y1="0" y2="1">
-								<stop offset="0%" stop-color="${accent.includes('emerald') ? 'rgba(32,180,109,0.26)' : accent.includes('red') ? 'rgba(239,68,68,0.24)' : 'rgba(33,150,255,0.22)'}" />
-								<stop offset="100%" stop-color="rgba(33,150,255,0.02)" />
-							</linearGradient>
-						</defs>
+					<svg viewBox="0 0 ${width} ${height}" class="flex h-56 w-full items-center justify-center overflow-hidden rounded-[16px] bg-slate-50 dark:bg-slate-900">
 						<g opacity="0.52">
 							${Array.from({ length: 5 }).map((_, index) => `<line x1="24" y1="${24 + index * 42}" x2="736" y2="${24 + index * 42}" stroke="rgba(148,163,184,0.12)" />`).join('')}
 						</g>
-						${isEmpty ? 
-							`<text x="380" y="120" text-anchor="middle" dominant-baseline="middle" font-size="16" fill="rgba(148, 163, 184, 0.5)">⏳ Chờ dữ liệu từ sensor...</text>` : 
-							`<path d="${fill}" fill="url(#${title.replace(/\s+/g, '-')}-fill)" />
-							<path d="${path}" fill="none" stroke="url(#${title.replace(/\s+/g, '-')}-line)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
-							${points.map((point) => `<circle cx="${point[0]}" cy="${point[1]}" r="4.5" fill="#fff" stroke="url(#${title.replace(/\s+/g, '-')}-line)" stroke-width="3" />`).join('')}`
+						${isEmpty ?
+							`<text x="380" y="120" text-anchor="middle" dominant-baseline="middle" font-size="16" fill="rgba(100, 116, 139, 0.8)">Chờ dữ liệu từ sensor...</text>` :
+							`<path d="${fill}" fill="${chartFill}" />
+							<path d="${path}" fill="none" stroke="${chartColor}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+							${points.map((point) => `<circle cx="${point[0]}" cy="${point[1]}" r="4.5" fill="#fff" stroke="${chartColor}" stroke-width="3" />`).join('')}`
 						}
 					</svg>
 				</div>
@@ -394,15 +346,15 @@
 		function progressBar(value, max, tone = 'brand') {
 			const pct = Math.round((value / max) * 100);
 			const toneClass = tone === 'danger'
-				? 'from-red-500 to-orange-500'
+				? 'bg-red-600'
 				: tone === 'warning'
-					? 'from-amber-400 to-yellow-400'
-					: tone === 'mint'
-						? 'from-emerald-400 to-green-500'
-						: 'from-brand-400 to-cyan-400';
+					? 'bg-amber-600'
+					: tone === 'safe'
+						? 'bg-emerald-600'
+						: 'bg-brand-600';
 			return `
 				<div class="h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-					<div class="h-full rounded-full bg-gradient-to-r ${toneClass}" style="width:${pct}%"></div>
+					<div class="h-full rounded-full ${toneClass}" style="width:${pct}%"></div>
 				</div>
 			`;
 		}
@@ -440,8 +392,8 @@
 			const classes = {
 				IDLE: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20',
 				FALLING: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20',
-				IMPACT: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:ring-orange-500/20',
-				MOTIONLESS: 'bg-slate-100 text-slate-700 ring-1 ring-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:ring-slate-500/20',
+				IMPACT: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20',
+				MOTIONLESS: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20',
 				ALERT: 'bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20',
 			};
 			return classes[normalizeFirmwareStatus(value)] || classes.IDLE;
@@ -453,15 +405,16 @@
 		}
 
 		function statusBadge(value) {
-			return `<span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${firmwareStatusBadgeClass(value)}"><span class="h-1.5 w-1.5 rounded-full bg-current"></span>${firmwareStatusLabel(value)}</span>`;
+			const icon = isCriticalFirmwareStatus(value) ? 'triangle-alert' : isTransitionFirmwareStatus(value) ? 'circle-alert' : 'check-circle-2';
+			return `<span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${firmwareStatusBadgeClass(value)}"><i data-lucide="${icon}" class="h-3.5 w-3.5"></i>${firmwareStatusLabel(value)}</span>`;
 		}
 
 		function iconCircle(name, tone = 'brand') {
 			const theme = {
 				brand: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
-				mint: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
-				amber: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
-				red: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300',
+				safe: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
+				warning: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
+				danger: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300',
 				slate: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
 			};
 			return `<span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl ${theme[tone] || theme.brand}"><i data-lucide="${name}" class="h-5 w-5"></i></span>`;
@@ -469,93 +422,49 @@
 
 		function renderLanding() {
 			return `
-				<div class="relative min-h-screen overflow-hidden">
-					<div class="absolute inset-0 soft-grid opacity-[0.10]"></div>
-					<div class="noise"></div>
-
-					<!-- Ambient glow blobs -->
-					<div class="pointer-events-none absolute -top-32 left-1/4 h-[520px] w-[520px] rounded-full bg-brand-400/10 blur-[100px]"></div>
-					<div class="pointer-events-none absolute bottom-0 right-1/4 h-[400px] w-[400px] rounded-full bg-emerald-400/10 blur-[90px]"></div>
-
-					<div class="relative mx-auto flex min-h-screen max-w-6xl flex-col justify-between px-4 py-5 sm:px-6 lg:px-8">
-
-						<!-- HEADER -->
-						<header class="glass rounded-[28px] px-5 py-4 shadow-soft">
+				<div class="min-h-screen bg-slate-50 dark:bg-slate-950">
+					<div class="mx-auto flex min-h-screen max-w-5xl flex-col justify-between px-4 py-5 sm:px-6 lg:px-8">
+						<header class="glass rounded-[16px] px-5 py-4">
 							<div class="flex items-center justify-between gap-4">
 								<div class="flex items-center gap-3">
-									<div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-400 text-white shadow-glow">
+									<div class="flex h-11 w-11 items-center justify-center rounded-[12px] bg-brand-600 text-white">
 										<i data-lucide="heart-pulse" class="h-5 w-5"></i>
 									</div>
 									<div>
-										<div class="text-base font-extrabold tracking-tight">MedPulse</div>
+										<div class="text-base font-bold tracking-tight">MedPulse</div>
 										<div class="text-xs text-slate-500 dark:text-slate-400">Hệ thống giám sát sức khỏe người cao tuổi</div>
 									</div>
 								</div>
 								<div class="flex items-center gap-2">
-									<button data-action="toggle-theme" class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+									<button data-action="toggle-theme" class="inline-flex items-center gap-2 rounded-[12px] border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 transition dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
 										<i data-lucide="${state.darkMode ? 'sun' : 'moon-star'}" class="h-4 w-4"></i>
 										<span class="hidden sm:inline">${state.darkMode ? 'Sáng' : 'Tối'}</span>
 									</button>
-									<button data-action="show-login" class="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-950">
+									<button data-action="show-login" class="inline-flex items-center gap-2 rounded-[12px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700">
 										<i data-lucide="log-in" class="h-4 w-4"></i><span>Đăng nhập</span>
 									</button>
 								</div>
 							</div>
 						</header>
-
-						<!-- MAIN HERO -->
-						<main class="flex flex-1 flex-col items-center justify-center py-16 text-center animate-slideIn">
-
-							<!-- Badge -->
-							<div class="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm backdrop-blur dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-								<span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-								Giám sát liên tục · Cảnh báo tức thời · Kết nối RFID
-							</div>
-
-							<!-- Headline -->
-							<h1 class="max-w-3xl text-4xl font-black leading-[1.12] tracking-tight text-slate-900 sm:text-5xl lg:text-6xl dark:text-white">
-								Theo dõi sức khỏe<br/>
-								<span class="bg-gradient-to-r from-brand-500 via-cyan-500 to-emerald-500 bg-clip-text text-transparent">người cao tuổi</span><br/>
-								mọi lúc, mọi nơi.
+						<main class="flex flex-1 flex-col items-center justify-center py-16 text-center">
+							<h1 class="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl dark:text-white">
+								MedPulse
 							</h1>
-
-							<!-- Subtext -->
-							<p class="mt-6 max-w-xl text-base leading-7 text-slate-500 dark:text-slate-400">
-								Hệ thống IoT giám sát nhịp tim, SpO₂, nhiệt độ và phát hiện té ngã theo thời gian thực, được thiết kế cho viện dưỡng lão và bệnh viện.
+							<p class="mt-5 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300">
+								Bảng điều khiển lâm sàng theo dõi nhịp tim, SpO₂, nhiệt độ và té ngã theo thời gian thực từ thiết bị ESP32.
 							</p>
-
-							<!-- CTA -->
-							<div class="mt-10 flex flex-wrap items-center justify-center gap-3">
-								<button data-action="show-login" class="rounded-2xl bg-gradient-to-r from-brand-500 to-cyan-400 px-7 py-3.5 text-sm font-bold text-white shadow-glow transition hover:-translate-y-0.5 hover:shadow-lg">
+							<div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+								<button data-action="show-login" class="rounded-[12px] bg-brand-600 px-7 py-3.5 text-sm font-bold text-white transition hover:bg-brand-700">
 									Vào hệ thống
 								</button>
-								<button data-action="show-login" class="rounded-2xl border border-slate-200 bg-white px-7 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+								<button data-action="show-login" class="rounded-[12px] border border-slate-200 bg-white px-7 py-3.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
 									Đăng nhập demo
 								</button>
 							</div>
-
-							<!-- Feature pills -->
-							<div class="mt-14 flex flex-wrap items-center justify-center gap-3">
-								${[
-									{ icon: 'heart-pulse',    label: 'Nhịp tim & SpO₂ realtime' },
-									{ icon: 'thermometer',   label: 'Nhiệt độ cơ thể' },
-									{ icon: 'person-standing', label: 'Phát hiện té ngã' },
-									{ icon: 'wifi',          label: 'MQTT · WebSocket' },
-									{ icon: 'scan-line',     label: 'Nhận diện RFID' },
-								].map(f => `
-									<div class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-										<i data-lucide="${f.icon}" class="h-4 w-4 text-brand-500 dark:text-brand-400"></i>
-										${f.label}
-									</div>
-								`).join('')}
-							</div>
 						</main>
-
-						<!-- FOOTER -->
 						<footer class="pb-2 text-center text-xs text-slate-400 dark:text-slate-600">
 							MedPulse · Hệ thống giám sát sức khỏe người cao tuổi · Hoạt động 24/7
 						</footer>
-
 					</div>
 				</div>
 			`;
@@ -582,57 +491,22 @@
 
 		function renderLogin() {
 			return `
-				<div class="relative min-h-screen overflow-hidden">
-					<div class="absolute inset-0 soft-grid opacity-[0.12]"></div>
-					<div class="noise"></div>
-					<div class="relative mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
-						<div class="grid w-full gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-							<section class="card relative overflow-hidden rounded-[34px] p-8 shadow-soft animate-slideIn">
-								<div class="absolute inset-0 bg-gradient-to-br from-brand-50 via-white to-emerald-50 dark:from-brand-500/10 dark:via-slate-950 dark:to-emerald-500/10"></div>
-								<div class="relative space-y-6">
-									<div class="flex items-center gap-3">
-										<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-400 text-white shadow-glow">
-											<i data-lucide="shield-plus" class="h-6 w-6"></i>
-										</div>
-										<div>
-											<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Secure access</div>
-											<div class="text-2xl font-black tracking-tight">MedPulse Access</div>
-										</div>
-									</div>
-									<div>
-										<h2 class="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Đăng nhập vào trung tâm giám sát realtime</h2>
-										<p class="mt-3 max-w-xl text-base leading-7 text-slate-600 dark:text-slate-300">Mô phỏng giao diện login hiện đại cho y tá và bác sĩ, có thể dùng làm cổng demo hoặc bắt đầu để tích hợp auth thật.</p>
-									</div>
-									<div class="grid gap-4 sm:grid-cols-3">
-										<div class="rounded-[24px] bg-white/85 p-4 shadow-sm dark:bg-slate-950/60">
-											<div class="text-sm font-semibold text-slate-500">Privacy</div>
-											<div class="mt-2 text-lg font-bold">Role-based</div>
-										</div>
-										<div class="rounded-[24px] bg-white/85 p-4 shadow-sm dark:bg-slate-950/60">
-											<div class="text-sm font-semibold text-slate-500">Realtime</div>
-											<div class="mt-2 text-lg font-bold">MQTT / WS</div>
-										</div>
-										<div class="rounded-[24px] bg-white/85 p-4 shadow-sm dark:bg-slate-950/60">
-											<div class="text-sm font-semibold text-slate-500">Reports</div>
-											<div class="mt-2 text-lg font-bold">PDF export</div>
-										</div>
-									</div>
-									<div class="rounded-[28px] border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950/70">
-										<div class="flex items-center justify-between text-sm font-semibold text-slate-500 dark:text-slate-400">
-											<span>Trusted by</span><span class="rounded-full bg-mint-50 px-3 py-1 text-mint-700 dark:bg-emerald-500/10 dark:text-emerald-300">Nursing teams</span>
-										</div>
-										<div class="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">Hộp đăng nhập demo này có thể thay bằng SSO, Azure AD hoặc tài khoản nội bộ. Giao diện được giữ đơn giản, rõ ràng, phù hợp môi trường y tế.</div>
-									</div>
-								</div>
-							</section>
-
-							<section class="card rounded-[34px] p-6 shadow-soft animate-slideIn">
+				<div class="min-h-screen bg-slate-50 dark:bg-slate-950">
+					<div class="mx-auto flex min-h-screen max-w-md items-center justify-center px-4 py-10 sm:px-6">
+							<section class="card w-full rounded-[24px] p-6">
 								<div class="flex items-center justify-between">
 									<div>
-										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Demo login</div>
-										<div class="mt-1 text-2xl font-black tracking-tight">Sign in to dashboard</div>
+										<div class="flex items-center gap-3">
+											<div class="flex h-11 w-11 items-center justify-center rounded-[12px] bg-brand-600 text-white">
+												<i data-lucide="shield-plus" class="h-5 w-5"></i>
+											</div>
+											<div>
+												<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">MedPulse Access</div>
+												<div class="mt-1 text-2xl font-bold tracking-tight">Đăng nhập</div>
+											</div>
+										</div>
+										<p class="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">Truy cập trung tâm giám sát bệnh nhân realtime.</p>
 									</div>
-									<button data-action="show-landing" class="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-900">Landing</button>
 								</div>
 								<div class="mt-6 space-y-5">
 									<label class="block">
@@ -644,15 +518,14 @@
 										<input data-bind="loginPin" value="${escapeHtml(state.loginPin)}" type="password" placeholder="••••••" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15" />
 									</label>
 									<div class="grid gap-3 sm:grid-cols-2">
-										<button data-action="demo-login" class="rounded-2xl bg-gradient-to-r from-brand-500 to-cyan-400 px-5 py-3.5 text-sm font-bold text-white shadow-glow transition hover:-translate-y-0.5">Vào dashboard</button>
-										<button data-action="fill-demo" class="rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-bold text-slate-700 transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Điền demo</button>
+										<button data-action="demo-login" class="rounded-[12px] bg-brand-600 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-brand-700">Vào dashboard</button>
+										<button data-action="fill-demo" class="rounded-[12px] border border-slate-200 bg-white px-5 py-3.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">Điền demo</button>
 									</div>
-									<div class="rounded-[26px] border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-300">
+									<div class="rounded-[16px] border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-300">
 										Demo credentials: <span class="font-bold text-slate-900 dark:text-white">nurse.le</span> / <span class="font-bold text-slate-900 dark:text-white">demo123</span>
 									</div>
 								</div>
 							</section>
-						</div>
 					</div>
 				</div>
 			`;
@@ -667,25 +540,25 @@
 				['settings', 'Thiết lập', 'settings-2'],
 			];
 			return `
-				<aside class="${state.sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} fixed inset-y-0 left-0 z-40 flex w-[290px] flex-col border-r border-slate-200/70 bg-[rgb(var(--panel))]/95 shadow-soft backdrop-blur-xl transition-transform duration-300 dark:border-slate-800/70 lg:static lg:z-auto">
+				<aside class="${state.sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} fixed inset-y-0 left-0 z-40 flex w-[290px] flex-col border-r border-slate-200/70 bg-[rgb(var(--panel))]/95   transition-transform duration-300 dark:border-slate-800/70 lg:static lg:z-auto">
 					<div class="flex items-center justify-between gap-3 border-b border-slate-200/70 px-5 py-5 dark:border-slate-800/70">
 						<div class="flex items-center gap-3">
-							<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-400 text-white shadow-glow"><i data-lucide="activity" class="h-6 w-6"></i></div>
+							<div class="flex h-12 w-12 items-center justify-center rounded-[12px] bg-brand-600 text-white"><i data-lucide="activity" class="h-6 w-6"></i></div>
 							<div>
-								<div class="text-lg font-extrabold tracking-tight">MedPulse</div>
+								<div class="text-lg font-bold tracking-tight">MedPulse</div>
 								<div class="text-xs font-medium uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Health-tech</div>
 							</div>
 						</div>
 						<button data-action="toggle-sidebar" class="rounded-2xl p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-900 lg:hidden"><i data-lucide="panel-left-close" class="h-5 w-5"></i></button>
 					</div>
 					<div class="flex-1 overflow-y-auto px-4 py-5 hide-scrollbar">
-						<div class="rounded-[26px] bg-gradient-to-br from-slate-950 to-slate-800 p-5 text-white shadow-soft dark:from-slate-900 dark:to-slate-950">
+						<div class="rounded-[16px] border border-slate-800 bg-slate-950 p-5 text-white">
 							<div class="flex items-center justify-between">
 								<div>
 									<div class="text-xs uppercase tracking-[0.24em] text-slate-400">Realtime</div>
-									<div class="mt-2 text-2xl font-black">${patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length}/${patients.length > 0 ? patients.length : '0'}</div>
+									<div class="mt-2 text-2xl font-bold">${patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length}/${patients.length > 0 ? patients.length : '0'}</div>
 								</div>
-								<div class="rounded-2xl bg-white/10 p-3"><i data-lucide="radiation" class="h-6 w-6 text-cyan-300"></i></div>
+								<div class="rounded-[12px] bg-white/10 p-3"><i data-lucide="activity" class="h-6 w-6 text-brand-200"></i></div>
 							</div>
 							<div class="mt-4 text-sm leading-6 text-slate-300">Kiosk ${state.kioskStatus} · MQTT ${state.mqttStatus} · Wi-Fi ${state.wifiStatus}</div>
 						</div>
@@ -698,7 +571,7 @@
 							`).join('')}
 						</nav>
 
-						<div class="mt-6 rounded-[28px] border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60">
+						<div class="mt-6 rounded-[16px] border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60">
 							<div class="flex items-center justify-between">
 								<div>
 									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Notification center</div>
@@ -721,21 +594,21 @@
 
 		function metricCard(title, value, delta, icon, tone, note) {
 			const toneClass = {
-				brand: 'from-brand-500 to-cyan-400',
-				mint: 'from-emerald-400 to-green-500',
-				amber: 'from-amber-400 to-orange-400',
-				red: 'from-red-500 to-rose-500',
-			}[tone] || 'from-brand-500 to-cyan-400';
+				brand: 'bg-brand-600',
+				safe: 'bg-emerald-600',
+				warning: 'bg-amber-600',
+				danger: 'bg-red-600',
+			}[tone] || 'bg-brand-600';
 			return `
-				<div class="card rounded-[28px] p-5 shadow-soft transition duration-300 hover:-translate-y-1">
+				<div class="card rounded-[16px] p-5">
 					<div class="flex items-start justify-between gap-4">
 						<div>
 							<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${title}</div>
-							<div class="mt-2 text-3xl font-black tracking-tight">${value}</div>
+							<div class="mt-2 text-3xl font-bold tracking-tight">${value}</div>
 							<div class="mt-2 text-sm font-semibold ${delta.startsWith('+') ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}">${delta}</div>
 							<div class="mt-2 text-xs text-slate-400 dark:text-slate-500">${note}</div>
 						</div>
-						<div class="rounded-[22px] bg-gradient-to-br ${toneClass} p-3 text-white shadow-soft">
+						<div class="rounded-[12px] ${toneClass} p-3 text-white">
 							<i data-lucide="${icon}" class="h-6 w-6"></i>
 						</div>
 					</div>
@@ -745,28 +618,28 @@
 
 		function statChip(label, value, tone) {
 			const tones = {
-				green: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20',
-				amber: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20',
-				red: 'bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20',
-				blue: 'bg-brand-50 text-brand-700 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:text-brand-300 dark:ring-brand-500/20',
+				safe: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20',
+				warning: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20',
+				danger: 'bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20',
+				brand: 'bg-brand-50 text-brand-700 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:text-brand-300 dark:ring-brand-500/20',
 			};
-			return `<div class="rounded-2xl px-3 py-2 text-sm font-semibold ${tones[tone] || tones.blue}"><span class="text-xs uppercase tracking-[0.16em] opacity-70">${label}</span><div class="mt-1 text-base font-black">${value}</div></div>`;
+			return `<div class="rounded-2xl px-3 py-2 text-sm font-semibold ${tones[tone] || tones.brand}"><span class="text-xs uppercase tracking-[0.16em] opacity-70">${label}</span><div class="mt-1 text-base font-bold">${value}</div></div>`;
 		}
 
 		function renderOverview() {
 			if (patients.length === 0) {
 				return `
-					<div class="flex min-h-[60vh] flex-col items-center justify-center gap-6 animate-slideIn">
-						<div class="flex h-24 w-24 items-center justify-center rounded-[34px] bg-gradient-to-br from-brand-500 to-cyan-400 text-white shadow-glow">
+					<div class="flex min-h-[60vh] flex-col items-center justify-center gap-6 ">
+						<div class="flex h-24 w-24 items-center justify-center rounded-[24px] bg-brand-600 text-white">
 							<i data-lucide="scan-line" class="h-12 w-12"></i>
 						</div>
 						<div class="text-center">
-							<div class="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Hệ thống trực tuyến</div>
+							<div class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Hệ thống trực tuyến</div>
 							<div class="mt-3 max-w-md text-base leading-7 text-slate-500 dark:text-slate-400">Thiết bị sẵn sàng. Vui lòng quẹt thẻ RFID trên mạch ESP32 để khởi tạo trạm giám sát bệnh nhân.</div>
 						</div>
 						<div class="flex flex-wrap items-center justify-center gap-3">
 							<div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-								<span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>WebSocket ${state.mqttStatus === 'connected' ? 'Đã kết nối' : 'Đang kết nối...'}
+								<i data-lucide="check-circle-2" class="h-4 w-4"></i>WebSocket ${state.mqttStatus === 'connected' ? 'Đã kết nối' : 'Đang kết nối...'}
 							</div>
 							<div class="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-300">
 								<i data-lucide="wifi" class="h-4 w-4"></i>${state.wifiStatus === 'stable' ? 'Wi-Fi ổn định' : 'Wi-Fi yếu'}
@@ -791,19 +664,19 @@
 				: Array(18).fill(0);
 			const alertPatients = patients.filter((patient) => !isNormalFirmwareStatus(patient.status)).slice(0, 4);
 			const criticalItems = [
-				{ label: 'MQTT', value: state.mqttStatus === 'connected' ? 'Connected' : 'Degraded', tone: state.mqttStatus === 'connected' ? 'green' : 'amber' },
-				{ label: 'Wi-Fi', value: state.wifiStatus === 'stable' ? 'Stable' : 'Unstable', tone: state.wifiStatus === 'stable' ? 'green' : 'amber' },
-				{ label: 'Kiosk', value: state.kioskStatus === 'online' ? 'Online' : 'Warning', tone: state.kioskStatus === 'online' ? 'green' : 'amber' },
-				{ label: 'Firmware status', value: `${patients.filter((patient) => !isNormalFirmwareStatus(patient.status)).length} active`, tone: dangerCount ? 'red' : 'blue' },
+				{ label: 'MQTT', value: state.mqttStatus === 'connected' ? 'Connected' : 'Degraded', tone: state.mqttStatus === 'connected' ? 'safe' : 'warning' },
+				{ label: 'Wi-Fi', value: state.wifiStatus === 'stable' ? 'Stable' : 'Unstable', tone: state.wifiStatus === 'stable' ? 'safe' : 'warning' },
+				{ label: 'Kiosk', value: state.kioskStatus === 'online' ? 'Online' : 'Warning', tone: state.kioskStatus === 'online' ? 'safe' : 'warning' },
+				{ label: 'Firmware status', value: `${patients.filter((patient) => !isNormalFirmwareStatus(patient.status)).length} active`, tone: dangerCount ? 'danger' : 'brand' },
 			];
 
 			return `
-				<div class="space-y-6 animate-slideIn">
+				<div class="space-y-6 ">
 					<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 						${metricCard('Tổng bệnh nhân', patients.length, '+ realtime', 'users-round', 'brand', 'Đang theo dõi trực tiếp')}
-						${metricCard('Bệnh nhân an toàn', safeCount, `${safeCount >= 12 ? '+' : ''}${safeCount - 12}`, 'shield-check', 'mint', 'Vùng an toàn / vitals ổn')}
-						${metricCard('Cảnh báo đang hoạt động', warningCount + dangerCount, dangerCount ? `${dangerCount} nguy hiểm` : 'Giám sát', 'triangle-alert', dangerCount ? 'red' : 'amber', 'Té ngã, SpO₂ thấp, mất tín hiệu')}
-						${metricCard('Té ngã hôm nay', fallCount, `${fallCount > 0 ? '+' : ''}${fallCount}`, 'person-standing', fallCount > 0 ? 'red' : 'amber', 'Phát hiện từ wearable/kiosk')}
+						${metricCard('Bệnh nhân an toàn', safeCount, `${safeCount >= 12 ? '+' : ''}${safeCount - 12}`, 'shield-check', 'safe', 'Vùng an toàn / vitals ổn')}
+						${metricCard('Cảnh báo đang hoạt động', warningCount + dangerCount, dangerCount ? `${dangerCount} nguy hiểm` : 'Giám sát', 'triangle-alert', dangerCount ? 'danger' : 'warning', 'Té ngã, SpO₂ thấp, mất tín hiệu')}
+						${metricCard('Té ngã hôm nay', fallCount, `${fallCount > 0 ? '+' : ''}${fallCount}`, 'person-standing', fallCount > 0 ? 'danger' : 'warning', 'Phát hiện từ wearable/kiosk')}
 					</section>
 
 					<section class="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
@@ -812,24 +685,24 @@
 								${chartCard('Nhịp tim trung bình', heartSeries, 'bpm', 'text-brand-600 dark:text-brand-300', `AVG ${avgHeart} bpm`)}
 								${chartCard('Nhiệt độ cơ thể', tempSeries, '°C', 'text-emerald-600 dark:text-emerald-300', `AVG ${avgTemp} °C`)}
 							</div>
-							<div class="card rounded-[30px] p-5 shadow-soft">
+							<div class="card rounded-[16px] p-5 ">
 								<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 									<div>
 										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Overview snapshots</div>
-										<div class="mt-1 text-2xl font-black tracking-tight">Realtime health status</div>
+										<div class="mt-1 text-2xl font-bold tracking-tight">Realtime health status</div>
 									</div>
 									<div class="flex flex-wrap gap-2">
-										${statChip('SpO₂ average', `${avgSpO2}%`, avgSpO2 < 94 ? 'red' : 'green')}
-										${statChip('MQTT', state.mqttStatus, state.mqttStatus === 'connected' ? 'green' : 'amber')}
-										${statChip('Wi-Fi', state.wifiStatus, state.wifiStatus === 'stable' ? 'green' : 'amber')}
+										${statChip('SpO₂ average', `${avgSpO2}%`, avgSpO2 < 94 ? 'danger' : 'safe')}
+										${statChip('MQTT', state.mqttStatus, state.mqttStatus === 'connected' ? 'safe' : 'warning')}
+										${statChip('Wi-Fi', state.wifiStatus, state.wifiStatus === 'stable' ? 'safe' : 'warning')}
 									</div>
 								</div>
 								<div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 									${criticalItems.map((item) => `
-										<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+										<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
 											<div class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">${item.label}</div>
-											<div class="mt-2 text-lg font-black ${item.tone === 'green' ? 'text-emerald-600 dark:text-emerald-300' : item.tone === 'red' ? 'text-red-600 dark:text-red-300' : 'text-slate-800 dark:text-slate-100'}">${item.value}</div>
-											<div class="mt-3">${progressBar(item.label === 'BLE' ? patients.filter((patient) => !patient.signalLost).length : item.tone === 'green' ? 92 : 58, 100, item.tone === 'green' ? 'mint' : item.tone === 'red' ? 'danger' : 'warning')}</div>
+											<div class="mt-2 text-lg font-bold ${item.tone === 'safe' ? 'text-emerald-600 dark:text-emerald-300' : item.tone === 'danger' ? 'text-red-600 dark:text-red-300' : 'text-slate-800 dark:text-slate-100'}">${item.value}</div>
+											<div class="mt-3">${progressBar(item.label === 'BLE' ? patients.filter((patient) => !patient.signalLost).length : item.tone === 'safe' ? 92 : 58, 100, item.tone === 'safe' ? 'safe' : item.tone === 'danger' ? 'danger' : 'warning')}</div>
 										</div>
 									`).join('')}
 								</div>
@@ -837,39 +710,39 @@
 						</div>
 
 						<div class="space-y-6">
-							<div class="card rounded-[30px] p-5 shadow-soft">
+							<div class="card rounded-[16px] p-5 ">
 								<div class="flex items-center justify-between">
 									<div>
 										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">System status</div>
-										<div class="mt-1 text-xl font-black">MQTT / Wi-Fi / Kiosk</div>
+										<div class="mt-1 text-xl font-bold">MQTT / Wi-Fi / Kiosk</div>
 									</div>
-									<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"><span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>Realtime</span>
+									<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"><i data-lucide="check-circle-2" class="h-3.5 w-3.5"></i>Realtime</span>
 								</div>
 								<div class="mt-5 space-y-3">
 									${[
-										['MQTT Broker', state.mqttStatus, state.mqttStatus === 'connected' ? 96 : 61, state.mqttStatus === 'connected' ? 'mint' : 'amber'],
-										['Wi-Fi Core', state.wifiStatus, state.wifiStatus === 'stable' ? 94 : 58, state.wifiStatus === 'stable' ? 'mint' : 'amber'],
-										['Kiosk Fleet', state.kioskStatus, state.kioskStatus === 'online' ? 91 : 54, state.kioskStatus === 'online' ? 'mint' : 'amber'],
+										['MQTT Broker', state.mqttStatus, state.mqttStatus === 'connected' ? 96 : 61, state.mqttStatus === 'connected' ? 'safe' : 'warning'],
+										['Wi-Fi Core', state.wifiStatus, state.wifiStatus === 'stable' ? 94 : 58, state.wifiStatus === 'stable' ? 'safe' : 'warning'],
+										['Kiosk Fleet', state.kioskStatus, state.kioskStatus === 'online' ? 91 : 54, state.kioskStatus === 'online' ? 'safe' : 'warning'],
 									].map(([label, value, pct, tone]) => `
-										<div class="space-y-2 rounded-[20px] bg-slate-50 p-4 dark:bg-slate-950/50">
-											<div class="flex items-center justify-between text-sm font-semibold"><span>${label}</span><span class="capitalize ${tone === 'mint' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${value}</span></div>
+										<div class="space-y-2 rounded-[12px] bg-slate-50 p-4 dark:bg-slate-950/50">
+											<div class="flex items-center justify-between text-sm font-semibold"><span>${label}</span><span class="capitalize ${tone === 'safe' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${value}</span></div>
 											${progressBar(Number(pct), 100, tone)}
 										</div>
 									`).join('')}
 								</div>
 							</div>
 
-							<div class="card rounded-[30px] p-5 shadow-soft">
+							<div class="card rounded-[16px] p-5 ">
 								<div class="flex items-center justify-between">
 									<div>
 										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Danger pulse</div>
-										<div class="mt-1 text-xl font-black">Cảnh báo nổi bật</div>
+										<div class="mt-1 text-xl font-bold">Cảnh báo nổi bật</div>
 									</div>
 									<div class="rounded-full bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 dark:bg-red-500/10 dark:text-red-300">${alertPatients.length} active</div>
 								</div>
 								<div class="mt-4 space-y-3">
 									${alertPatients.length ? alertPatients.map((patient) => `
-										<button data-action="open-patient" data-id="${patient.id}" class="w-full rounded-[24px] border border-red-200 bg-red-50/80 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-soft dark:border-red-500/20 dark:bg-red-500/10">
+										<button data-action="open-patient" data-id="${patient.id}" class="w-full rounded-[16px] border border-red-200 bg-red-50/80 p-4 text-left transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:hover:bg-red-500/15">
 											<div class="flex items-center justify-between gap-3">
 												<div class="flex items-center gap-3">
 													<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-white">${patient.avatar}</div>
@@ -881,12 +754,12 @@
 												<span class="rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white ${isCriticalFirmwareStatus(patient.status) || patient.fall || patient.signalLost ? 'pulse-critical' : ''}">${firmwareStatusLabel(patient.status)}</span>
 											</div>
 											<div class="mt-4 grid grid-cols-3 gap-2 text-sm">
-												<div class="rounded-2xl bg-white/80 p-2 text-center dark:bg-slate-950/60"><div class="text-[11px] text-slate-400">HR</div><div class="font-black text-slate-900 dark:text-white">${patient.heartRate}</div></div>
-												<div class="rounded-2xl bg-white/80 p-2 text-center dark:bg-slate-950/60"><div class="text-[11px] text-slate-400">SpO₂</div><div class="font-black text-slate-900 dark:text-white">${patient.spo2}%</div></div>
-												<div class="rounded-2xl bg-white/80 p-2 text-center dark:bg-slate-950/60"><div class="text-[11px] text-slate-400">Temp</div><div class="font-black text-slate-900 dark:text-white">${patient.temp}°</div></div>
+												<div class="rounded-2xl bg-white/80 p-2 text-center dark:bg-slate-950/60"><div class="text-[11px] text-slate-400">HR</div><div class="font-bold text-slate-900 dark:text-white">${patient.heartRate}</div></div>
+												<div class="rounded-2xl bg-white/80 p-2 text-center dark:bg-slate-950/60"><div class="text-[11px] text-slate-400">SpO₂</div><div class="font-bold text-slate-900 dark:text-white">${patient.spo2}%</div></div>
+												<div class="rounded-2xl bg-white/80 p-2 text-center dark:bg-slate-950/60"><div class="text-[11px] text-slate-400">Temp</div><div class="font-bold text-slate-900 dark:text-white">${patient.temp}°</div></div>
 											</div>
 										</button>
-									`).join('') : '<div class="rounded-[24px] bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-950/60 dark:text-slate-400">Không có cảnh báo nguy hiểm hiện tại</div>'}
+									`).join('') : '<div class="rounded-[16px] bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-950/60 dark:text-slate-400">Không có cảnh báo nguy hiểm hiện tại</div>'}
 								</div>
 							</div>
 						</div>
@@ -898,10 +771,10 @@
 		function renderPatients() {
 			if (patients.length === 0) {
 				return `
-					<div class="flex min-h-[50vh] flex-col items-center justify-center gap-5 animate-slideIn">
-						<div class="flex h-20 w-20 items-center justify-center rounded-[30px] bg-slate-100 text-slate-400 dark:bg-slate-900"><i data-lucide="users" class="h-10 w-10"></i></div>
+					<div class="flex min-h-[50vh] flex-col items-center justify-center gap-5 ">
+						<div class="flex h-20 w-20 items-center justify-center rounded-[16px] bg-slate-100 text-slate-400 dark:bg-slate-900"><i data-lucide="users" class="h-10 w-10"></i></div>
 						<div class="text-center">
-							<div class="text-2xl font-black text-slate-900 dark:text-white">Chưa có bệnh nhân nào</div>
+							<div class="text-2xl font-bold text-slate-900 dark:text-white">Chưa có bệnh nhân nào</div>
 							<div class="mt-2 text-base text-slate-500 dark:text-slate-400">Hệ thống đang chờ tín hiệu RFID từ thiết bị ESP32.</div>
 						</div>
 					</div>
@@ -918,27 +791,27 @@
 				danger: patients.filter((patient) => isCriticalFirmwareStatus(patient.status)).length,
 			};
 			return `
-				<div class="space-y-6 animate-slideIn">
-					<div class="card rounded-[30px] p-5 shadow-soft">
+				<div class="space-y-6 ">
+					<div class="card rounded-[16px] p-5 ">
 						<div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
 							<div>
 								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Danh sách bệnh nhân</div>
-								<div class="mt-1 text-2xl font-black tracking-tight">Quản lý theo dõi, tìm nhanh và lọc trạng thái</div>
+								<div class="mt-1 text-2xl font-bold tracking-tight">Quản lý theo dõi, tìm nhanh và lọc trạng thái</div>
 							</div>
 							<div class="flex flex-wrap items-center gap-3">
-								<button data-action="export-pdf" class="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white shadow-soft transition hover:-translate-y-0.5 dark:bg-white dark:text-slate-950">Export PDF report</button>
+								<button data-action="export-pdf" class="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white  transition  dark:bg-white dark:text-slate-950">Export PDF report</button>
 								<button data-action="open-toast" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Toast demo</button>
 							</div>
 						</div>
 						<div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-							${statChip('Tổng', summary.all, 'blue')}
-							${statChip('An toàn', summary.safe, 'green')}
-							${statChip('Đang ngã / chuyển trạng thái', summary.warning, 'amber')}
-							${statChip('Té ngã xác nhận', summary.danger, 'red')}
+							${statChip('Tổng', summary.all, 'brand')}
+							${statChip('An toàn', summary.safe, 'safe')}
+							${statChip('Đang ngã / chuyển trạng thái', summary.warning, 'warning')}
+							${statChip('Té ngã xác nhận', summary.danger, 'danger')}
 						</div>
 					</div>
 
-					<div class="card rounded-[30px] p-4 shadow-soft">
+					<div class="card rounded-[16px] p-4 ">
 						<div class="grid gap-3 lg:grid-cols-[1.5fr_0.9fr_0.9fr_0.9fr]">
 							<label class="block">
 								<span class="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Search</span>
@@ -975,7 +848,7 @@
 						</div>
 					</div>
 
-					<div class="card overflow-hidden rounded-[30px] shadow-soft">
+					<div class="card overflow-hidden rounded-[16px] ">
 						<div class="overflow-x-auto table-scroll">
 							<table class="min-w-full text-left">
 								<thead class="sticky top-0 z-10 bg-slate-50/90 text-xs uppercase tracking-[0.18em] text-slate-400 dark:bg-slate-950/80">
@@ -988,7 +861,7 @@
 										<tr class="group transition hover:bg-slate-50/70 dark:hover:bg-slate-950/50">
 											<td class="px-5 py-4">
 												<button data-action="open-patient" data-id="${patient.id}" class="flex items-center gap-3 text-left">
-													<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-400 text-sm font-black text-white shadow-soft">${patient.avatar}</div>
+													<div class="flex h-12 w-12 items-center justify-center rounded-[12px] bg-brand-600 text-sm font-bold text-white">${patient.avatar}</div>
 													<div>
 														<div class="font-bold">${patient.name}</div>
 														<div class="text-xs text-slate-500 dark:text-slate-400">${patient.room} · ${patient.age}y · ${patient.kiosk}</div>
@@ -1001,7 +874,7 @@
 											<td class="px-5 py-4 font-bold ${hasMeasurementData(patient) && patient.temp > 37.6 ? 'text-red-600 dark:text-red-300' : 'text-slate-700 dark:text-slate-200'}">${vitalText(patient, 'temp', '°C')}</td>
 											<td class="px-5 py-4">${statusBadge(patient.status)}</td>
 											<td class="px-5 py-4">
-												<div class="w-24">${hasMeasurementData(patient) ? progressBar(patient.battery, 100, patient.battery < 20 ? 'danger' : patient.battery < 45 ? 'warning' : 'mint') : progressBar(0, 100, 'warning')}</div>
+												<div class="w-24">${hasMeasurementData(patient) ? progressBar(patient.battery, 100, patient.battery < 20 ? 'danger' : patient.battery < 45 ? 'warning' : 'safe') : progressBar(0, 100, 'warning')}</div>
 												<div class="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">${vitalText(patient, 'battery', '%')}</div>
 											</td>
 											<td class="px-5 py-4">
@@ -1030,19 +903,19 @@
 
 		function renderPatientDetail() {
 			const patient = currentPatient();
-			if (!patient) return `<div class="card rounded-[30px] p-6 shadow-soft">Không có bệnh nhân được chọn.</div>`;
+			if (!patient) return `<div class="card rounded-[16px] p-6 ">Không có bệnh nhân được chọn.</div>`;
 			const heartSeries = patient.history?.heartRate || [];
 			const spo2Series = patient.history?.spo2 || [];
 			const tempSeries = patient.history?.temp || [];
 			return `
-				<div class="space-y-6 animate-slideIn">
-					<div class="card rounded-[30px] p-5 shadow-soft">
+				<div class="space-y-6 ">
+					<div class="card rounded-[16px] p-5 ">
 						<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 							<div class="flex items-center gap-4">
-								<div class="flex h-16 w-16 items-center justify-center rounded-[26px] bg-gradient-to-br from-brand-500 to-cyan-400 text-xl font-black text-white shadow-glow">${patient.avatar}</div>
+								<div class="flex h-16 w-16 items-center justify-center rounded-[16px] bg-brand-600 text-xl font-bold text-white">${patient.avatar}</div>
 								<div>
 									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Trang chi tiết bệnh nhân</div>
-									<div class="mt-1 text-3xl font-black tracking-tight">${patient.name}</div>
+									<div class="mt-1 text-3xl font-bold tracking-tight">${patient.name}</div>
 									<div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
 										<span>${patient.id}</span><span>•</span><span>${patient.room}</span><span>•</span><span>${patient.age} tuổi</span><span>•</span><span>${patient.kiosk}</span>
 									</div>
@@ -1050,7 +923,7 @@
 							</div>
 							<div class="flex flex-wrap gap-2">
 								${statusBadge(patient.status)}
-								<button data-action="simulate-alert" class="rounded-2xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:-translate-y-0.5">Trigger alert</button>
+								<button data-action="simulate-alert" class="rounded-2xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white  transition ">Trigger alert</button>
 								<button data-action="open-toast" class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Toast</button>
 							</div>
 						</div>
@@ -1060,15 +933,15 @@
 						<div class="space-y-6">
 							<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 								${[
-									['Heart rate', vitalText(patient, 'heartRate', ' bpm'), hasMeasurementData(patient) && (patient.heartRate > 110 || patient.heartRate < 55) ? 'red' : 'blue'],
-									['SpO₂', vitalText(patient, 'spo2', '%'), hasMeasurementData(patient) && patient.spo2 < 94 ? 'amber' : 'mint'],
-									['Temperature', vitalText(patient, 'temp', '°C'), hasMeasurementData(patient) && patient.temp > 37.6 ? 'red' : 'mint'],
-									['Battery', vitalText(patient, 'battery', '%'), hasMeasurementData(patient) && patient.battery < 20 ? 'red' : hasMeasurementData(patient) && patient.battery < 45 ? 'amber' : 'mint'],
+									['Heart rate', vitalText(patient, 'heartRate', ' bpm'), hasMeasurementData(patient) && (patient.heartRate > 110 || patient.heartRate < 55) ? 'danger' : 'brand'],
+									['SpO₂', vitalText(patient, 'spo2', '%'), hasMeasurementData(patient) && patient.spo2 < 94 ? 'warning' : 'safe'],
+									['Temperature', vitalText(patient, 'temp', '°C'), hasMeasurementData(patient) && patient.temp > 37.6 ? 'danger' : 'safe'],
+									['Battery', vitalText(patient, 'battery', '%'), hasMeasurementData(patient) && patient.battery < 20 ? 'danger' : hasMeasurementData(patient) && patient.battery < 45 ? 'warning' : 'safe'],
 								].map(([label, value, tone]) => `
-									<div class="card rounded-[26px] p-4 shadow-soft">
+									<div class="card rounded-[16px] p-4 ">
 										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${label}</div>
-										<div class="mt-2 text-3xl font-black ${tone === 'red' ? 'text-red-600 dark:text-red-300' : tone === 'amber' ? 'text-amber-600 dark:text-amber-300' : tone === 'mint' ? 'text-emerald-600 dark:text-emerald-300' : 'text-brand-600 dark:text-brand-300'}">${value}</div>
-										<div class="mt-3">${progressBar(!hasMeasurementData(patient) ? 0 : label === 'Battery' ? patient.battery : label === 'SpO₂' ? patient.spo2 : label === 'Temperature' ? Math.round((patient.temp / 40) * 100) : clamp(patient.heartRate, 0, 150), label === 'Temperature' ? 100 : label === 'Heart rate' ? 150 : 100, tone === 'red' ? 'danger' : tone === 'amber' ? 'warning' : 'mint')}</div>
+										<div class="mt-2 text-3xl font-bold ${tone === 'danger' ? 'text-red-600 dark:text-red-300' : tone === 'warning' ? 'text-amber-600 dark:text-amber-300' : tone === 'safe' ? 'text-emerald-600 dark:text-emerald-300' : 'text-brand-600 dark:text-brand-300'}">${value}</div>
+										<div class="mt-3">${progressBar(!hasMeasurementData(patient) ? 0 : label === 'Battery' ? patient.battery : label === 'SpO₂' ? patient.spo2 : label === 'Temperature' ? Math.round((patient.temp / 40) * 100) : clamp(patient.heartRate, 0, 150), label === 'Temperature' ? 100 : label === 'Heart rate' ? 150 : 100, tone === 'danger' ? 'danger' : tone === 'warning' ? 'warning' : 'safe')}</div>
 									</div>
 								`).join('')}
 							</div>
@@ -1077,17 +950,17 @@
 								${chartCard('SpO₂ realtime', spo2Series, '%', 'text-emerald-600 dark:text-emerald-300', 'Oxygen saturation')}
 								${chartCard('Body temperature', tempSeries, '°C', 'text-amber-600 dark:text-amber-300', 'Body temp')}
 							</div>
-							<div class="card rounded-[30px] p-5 shadow-soft">
+							<div class="card rounded-[16px] p-5 ">
 								<div class="flex items-center justify-between">
 									<div>
 										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Medical timeline</div>
-										<div class="mt-1 text-2xl font-black tracking-tight">Lịch sử check-in / check-out & cảnh báo</div>
+										<div class="mt-1 text-2xl font-bold tracking-tight">Lịch sử check-in / check-out & cảnh báo</div>
 									</div>
 									<button data-action="export-pdf" class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">PDF report</button>
 								</div>
 								<div class="mt-5 space-y-4">
 									${(patient.checkins || []).map((entry) => `
-										<div class="flex gap-4 rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+										<div class="flex gap-4 rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
 											<div class="mt-1 h-3 w-3 rounded-full ${entry.type === 'Check-in' ? 'bg-emerald-500' : entry.type === 'Medication' ? 'bg-brand-500' : 'bg-amber-500'}"></div>
 											<div class="flex-1">
 												<div class="flex items-center justify-between gap-3">
@@ -1102,35 +975,35 @@
 							</div>
 						</div>
 						<div class="space-y-6">
-							<div class="card rounded-[30px] p-5 shadow-soft">
+							<div class="card rounded-[16px] p-5 ">
 								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Patient profile</div>
-								<div class="mt-1 text-2xl font-black tracking-tight">Hồ sơ và thiết bị</div>
+								<div class="mt-1 text-2xl font-bold tracking-tight">Hồ sơ và thiết bị</div>
 								<div class="mt-5 grid gap-4 sm:grid-cols-2">
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">BLE</div><div class="mt-2 text-lg font-black ${patient.signalLost ? 'text-red-600 dark:text-red-300' : 'text-emerald-600 dark:text-emerald-300'}">${patient.ble}</div></div>
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">RSSI</div><div class="mt-2 text-lg font-black text-slate-900 dark:text-white">${vitalText(patient, 'rssi', ' dBm')}</div></div>
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Wearable battery</div><div class="mt-2 text-lg font-black text-slate-900 dark:text-white">${vitalText(patient, 'battery', '%')}</div></div>
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Last measurement</div><div class="mt-2 text-lg font-black text-slate-900 dark:text-white">${formatDateTimeFull(latestMeasurementDate(patient))}</div></div>
+									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">BLE</div><div class="mt-2 text-lg font-bold ${patient.signalLost ? 'text-red-600 dark:text-red-300' : 'text-emerald-600 dark:text-emerald-300'}">${patient.ble}</div></div>
+									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">RSSI</div><div class="mt-2 text-lg font-bold text-slate-900 dark:text-white">${vitalText(patient, 'rssi', ' dBm')}</div></div>
+									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Wearable battery</div><div class="mt-2 text-lg font-bold text-slate-900 dark:text-white">${vitalText(patient, 'battery', '%')}</div></div>
+									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Last measurement</div><div class="mt-2 text-lg font-bold text-slate-900 dark:text-white">${formatDateTimeFull(latestMeasurementDate(patient))}</div></div>
 								</div>
-								<div class="mt-5 rounded-[24px] border border-slate-200 bg-gradient-to-br from-brand-50 via-white to-emerald-50 p-4 dark:border-slate-800 dark:from-brand-500/10 dark:via-slate-950 dark:to-emerald-500/10">
+								<div class="mt-5 rounded-[16px] border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/50">
 									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Risk score</div>
 									<div class="mt-2 flex items-end justify-between gap-3">
-										<div class="text-4xl font-black ${patient.riskScore > 75 ? 'text-red-600 dark:text-red-300' : patient.riskScore > 45 ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}">${patient.riskScore}</div>
-										<div class="w-40">${progressBar(patient.riskScore, 100, patient.riskScore > 75 ? 'danger' : patient.riskScore > 45 ? 'warning' : 'mint')}</div>
+										<div class="text-4xl font-bold ${patient.riskScore > 75 ? 'text-red-600 dark:text-red-300' : patient.riskScore > 45 ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}">${patient.riskScore}</div>
+										<div class="w-40">${progressBar(patient.riskScore, 100, patient.riskScore > 75 ? 'danger' : patient.riskScore > 45 ? 'warning' : 'safe')}</div>
 									</div>
 								</div>
 							</div>
 
-							<div class="card rounded-[30px] p-5 shadow-soft">
+							<div class="card rounded-[16px] p-5 ">
 								<div class="flex items-center justify-between">
 									<div>
 										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Alert timeline</div>
-										<div class="mt-1 text-2xl font-black tracking-tight">Medical history feed</div>
+										<div class="mt-1 text-2xl font-bold tracking-tight">Medical history feed</div>
 									</div>
 									<span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 dark:bg-slate-900 dark:text-slate-300">${(patient.timeline || []).length} events</span>
 								</div>
 								<div class="mt-5 space-y-3">
 									${(patient.timeline || []).map((item) => `
-										<div class="flex gap-4 rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+										<div class="flex gap-4 rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
 											<div class="mt-1 h-10 w-10 rounded-2xl bg-white p-2 text-brand-600 shadow-sm dark:bg-slate-900 dark:text-brand-300"><i data-lucide="activity" class="h-6 w-6"></i></div>
 											<div class="flex-1">
 												<div class="flex items-center justify-between gap-3">
@@ -1156,27 +1029,27 @@
 				? allHR.slice(-24)
 				: [...Array(24 - allHR.length).fill(0), ...allHR];
 			return `
-				<div class="space-y-6 animate-slideIn">
-					<div class="card rounded-[30px] p-5 shadow-soft">
+				<div class="space-y-6 ">
+					<div class="card rounded-[16px] p-5 ">
 						<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 							<div>
 								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Lịch sử dữ liệu</div>
-								<div class="mt-1 text-2xl font-black tracking-tight">Heatmap, trend và audit trail</div>
+								<div class="mt-1 text-2xl font-bold tracking-tight">Heatmap, trend và audit trail</div>
 							</div>
 							<div class="flex flex-wrap gap-2">
-								${['24h', '7d', '30d'].map((range) => `<button data-action="set-range" data-range="${range}" class="rounded-2xl px-4 py-2.5 text-sm font-bold ${state.historyRange === range ? 'bg-brand-500 text-white shadow-glow' : 'border border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200'}">${range}</button>`).join('')}
+								${['24h', '7d', '30d'].map((range) => `<button data-action="set-range" data-range="${range}" class="rounded-2xl px-4 py-2.5 text-sm font-bold ${state.historyRange === range ? 'bg-brand-500 text-white ' : 'border border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200'}">${range}</button>`).join('')}
 							</div>
 						</div>
 					</div>
 					<div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
 						<div class="space-y-6">
 							${chartCard('Audit trend', series, 'pts', 'text-brand-600 dark:text-brand-300', 'Historical view')}
-							<div class="card rounded-[30px] p-5 shadow-soft">
+							<div class="card rounded-[16px] p-5 ">
 								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Event history</div>
-								<div class="mt-1 text-2xl font-black tracking-tight">Bản ghi sự kiện</div>
+								<div class="mt-1 text-2xl font-bold tracking-tight">Bản ghi sự kiện</div>
 								<div class="mt-5 space-y-3">
 									${patients.slice(0, 8).map((patient) => `
-										<div class="flex items-center justify-between rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+										<div class="flex items-center justify-between rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
 											<div>
 												<div class="font-bold">${patient.name}</div>
 												<div class="text-sm text-slate-500 dark:text-slate-400">${isCriticalFirmwareStatus(patient.status) ? 'Alarm logged' : 'Firmware state archived'} · ${patient.kiosk}</div>
@@ -1188,26 +1061,26 @@
 							</div>
 						</div>
 						<div class="space-y-6">
-							<div class="card rounded-[30px] p-5 shadow-soft">
+							<div class="card rounded-[16px] p-5 ">
 								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Report controls</div>
-								<div class="mt-1 text-2xl font-black tracking-tight">Xuất dữ liệu nhanh</div>
+								<div class="mt-1 text-2xl font-bold tracking-tight">Xuất dữ liệu nhanh</div>
 								<div class="mt-5 space-y-3">
 									<button data-action="export-pdf" class="w-full rounded-2xl bg-slate-950 px-4 py-3.5 text-sm font-bold text-white dark:bg-white dark:text-slate-950">Export PDF report</button>
 									<button data-action="open-toast" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Send summary to nurse station</button>
 								</div>
 							</div>
-							<div class="card rounded-[30px] p-5 shadow-soft">
+							<div class="card rounded-[16px] p-5 ">
 								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Historical KPIs</div>
-								<div class="mt-1 text-2xl font-black tracking-tight">Theo dõi xu hướng</div>
+								<div class="mt-1 text-2xl font-bold tracking-tight">Theo dõi xu hướng</div>
 								<div class="mt-5 space-y-4">
 									${[
-										['Average HR', '74 bpm', 'mint'],
-										['Avg SpO₂', '96%', 'mint'],
-										['Alert rate', '12%', 'amber'],
-										['Fall events', '2', 'red'],
+										['Average HR', '74 bpm', 'safe'],
+										['Avg SpO₂', '96%', 'safe'],
+										['Alert rate', '12%', 'warning'],
+										['Fall events', '2', 'danger'],
 									].map(([label, value, tone]) => `
-										<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
-											<div class="flex items-center justify-between gap-3"><div class="font-semibold">${label}</div><div class="font-black ${tone === 'mint' ? 'text-emerald-600 dark:text-emerald-300' : tone === 'red' ? 'text-red-600 dark:text-red-300' : 'text-amber-600 dark:text-amber-300'}">${value}</div></div>
+										<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
+											<div class="flex items-center justify-between gap-3"><div class="font-semibold">${label}</div><div class="font-bold ${tone === 'safe' ? 'text-emerald-600 dark:text-emerald-300' : tone === 'danger' ? 'text-red-600 dark:text-red-300' : 'text-amber-600 dark:text-amber-300'}">${value}</div></div>
 										</div>
 									`).join('')}
 								</div>
@@ -1220,71 +1093,71 @@
 
 		function renderSettings() {
 			return `
-				<div class="space-y-6 animate-slideIn">
-					<div class="card rounded-[30px] p-5 shadow-soft">
+				<div class="space-y-6 ">
+					<div class="card rounded-[16px] p-5 ">
 						<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Cấu hình</div>
-						<div class="mt-1 text-2xl font-black tracking-tight">Settings / Preferences</div>
+						<div class="mt-1 text-2xl font-bold tracking-tight">Settings / Preferences</div>
 					</div>
 					<div class="grid gap-6 xl:grid-cols-[1fr_1fr]">
 						<div class="space-y-6">
-							<div class="card rounded-[30px] p-5 shadow-soft">
+							<div class="card rounded-[16px] p-5 ">
 								<div class="flex items-center justify-between gap-4">
 									<div>
 										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Appearance</div>
-										<div class="mt-1 text-xl font-black">Dark mode</div>
+										<div class="mt-1 text-xl font-bold">Dark mode</div>
 									</div>
 									<button data-action="toggle-theme" class="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white dark:bg-white dark:text-slate-950">${state.darkMode ? 'On' : 'Off'}</button>
 								</div>
 								<div class="mt-5 grid gap-3 sm:grid-cols-2">
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Theme</div><div class="mt-2 text-lg font-black">Healthcare calm</div></div>
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Font</div><div class="mt-2 text-lg font-black">Plus Jakarta Sans</div></div>
+									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Theme</div><div class="mt-2 text-lg font-bold">Healthcare calm</div></div>
+									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Font</div><div class="mt-2 text-lg font-bold">Plus Jakarta Sans</div></div>
 								</div>
 							</div>
-							<div class="card rounded-[30px] p-5 shadow-soft">
+							<div class="card rounded-[16px] p-5 ">
 								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Connection</div>
-								<div class="mt-1 text-xl font-black">MQTT / WebSocket</div>
+								<div class="mt-1 text-xl font-bold">MQTT / WebSocket</div>
 								<div class="mt-5 space-y-3">
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="flex items-center justify-between"><span class="font-semibold">MQTT</span><span class="font-bold ${state.mqttStatus === 'connected' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${state.mqttStatus}</span></div></div>
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="flex items-center justify-between"><span class="font-semibold">Wi-Fi</span><span class="font-bold ${state.wifiStatus === 'stable' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${state.wifiStatus}</span></div></div>
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="flex items-center justify-between"><span class="font-semibold">Kiosk</span><span class="font-bold ${state.kioskStatus === 'online' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${state.kioskStatus}</span></div></div>
+									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="flex items-center justify-between"><span class="font-semibold">MQTT</span><span class="font-bold ${state.mqttStatus === 'connected' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${state.mqttStatus}</span></div></div>
+									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="flex items-center justify-between"><span class="font-semibold">Wi-Fi</span><span class="font-bold ${state.wifiStatus === 'stable' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${state.wifiStatus}</span></div></div>
+									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="flex items-center justify-between"><span class="font-semibold">Kiosk</span><span class="font-bold ${state.kioskStatus === 'online' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${state.kioskStatus}</span></div></div>
 								</div>
 							</div>
 						</div>
 						<div class="space-y-6">
-							<div class="card rounded-[30px] p-5 shadow-soft">
+							<div class="card rounded-[16px] p-5 ">
 								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Profile</div>
-								<div class="mt-1 text-xl font-black">User dropdown mock</div>
+								<div class="mt-1 text-xl font-bold">User dropdown mock</div>
 								<div class="mt-5 space-y-3 text-sm text-slate-600 dark:text-slate-300">
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">Role: Nurse / Doctor</div>
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">Notifications: On</div>
-									<div class="rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">Language: Vietnamese</div>
+									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">Role: Nurse / Doctor</div>
+									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">Notifications: On</div>
+									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">Language: Vietnamese</div>
 								</div>
 							</div>
-							<div class="card rounded-[30px] p-5 shadow-soft">
+							<div class="card rounded-[16px] p-5 ">
 								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">UI helpers</div>
-								<div class="mt-1 text-xl font-black">Loading skeleton / modal / toast</div>
-								<div class="mt-5 rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
-									<div class="skeleton animate-shimmer h-4 w-3/4 rounded-full"></div>
+								<div class="mt-1 text-xl font-bold">Loading skeleton / modal / toast</div>
+								<div class="mt-5 rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
+									<div class="skeleton  h-4 w-3/4 rounded-full"></div>
 									<div class="mt-3 space-y-3">
-										<div class="skeleton animate-shimmer h-4 w-full rounded-full"></div>
-										<div class="skeleton animate-shimmer mt-3 h-4 w-5/6 rounded-full"></div>
-										<div class="skeleton animate-shimmer mt-3 h-4 w-2/3 rounded-full"></div>
+										<div class="skeleton  h-4 w-full rounded-full"></div>
+										<div class="skeleton  mt-3 h-4 w-5/6 rounded-full"></div>
+										<div class="skeleton  mt-3 h-4 w-2/3 rounded-full"></div>
 									</div>
 								</div>
 							</div>
-								<div class="card rounded-[30px] p-5 shadow-soft">
+								<div class="card rounded-[16px] p-5 ">
 									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Firmware sequence</div>
-									<div class="mt-1 text-2xl font-black tracking-tight">Chuỗi trạng thái từ firmware</div>
+									<div class="mt-1 text-2xl font-bold tracking-tight">Chuỗi trạng thái từ firmware</div>
 									<div class="mt-5 space-y-3">
 										${(currentPatient()?.statusHistory || []).slice(-8).reverse().map((entry) => `
-											<div class="flex items-center justify-between gap-3 rounded-[24px] bg-slate-50 p-4 dark:bg-slate-950/50">
+											<div class="flex items-center justify-between gap-3 rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
 												<div class="flex items-center gap-3">
 													${statusBadge(entry.status)}
 													<div class="text-sm text-slate-500 dark:text-slate-400">${firmwareStatusLabel(entry.status)}</div>
 												</div>
 												<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${formatDateTime(new Date(entry.at))}</div>
 											</div>
-										`).join('') || '<div class="rounded-[24px] bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-950/50 dark:text-slate-400">Chưa có chuỗi trạng thái firmware.</div>'}
+										`).join('') || '<div class="rounded-[16px] bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-950/50 dark:text-slate-400">Chưa có chuỗi trạng thái firmware.</div>'}
 									</div>
 								</div>
 						</div>
@@ -1297,22 +1170,22 @@
 			return `
 				<div class="min-h-screen">
 					<div class="flex min-h-screen">
-						<div class="lg:hidden ${state.sidebarOpen ? 'block' : 'hidden'} fixed inset-0 z-30 bg-slate-950/30 backdrop-blur-[1px]" data-action="toggle-sidebar"></div>
+						<div class="lg:hidden ${state.sidebarOpen ? 'block' : 'hidden'} fixed inset-0 z-30 bg-slate-950/30 " data-action="toggle-sidebar"></div>
 						${renderSidebar()}
 						<div class="flex min-w-0 flex-1 flex-col">
 							<header class="sticky top-0 z-20 sticky-blur border-b border-slate-200/70 px-4 py-4 dark:border-slate-800/70 sm:px-6 lg:px-8">
 								<div class="flex items-center gap-3">
-									<button data-action="toggle-sidebar" class="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 lg:hidden"><i data-lucide="menu" class="h-5 w-5"></i></button>
+									<button data-action="toggle-sidebar" class="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition  dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 lg:hidden"><i data-lucide="menu" class="h-5 w-5"></i></button>
 									<div class="hidden md:block">
 										<div class="text-sm text-slate-500 dark:text-slate-400">Hospital / elder care monitoring</div>
-										<div class="text-xl font-black tracking-tight">Realtime patient care dashboard</div>
+										<div class="text-xl font-bold tracking-tight">Realtime patient care dashboard</div>
 									</div>
 									<div class="ml-auto flex items-center gap-2 md:gap-3">
-										<div class="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 sm:inline-flex sm:items-center sm:gap-2"><span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>Connected</div>
-										<button data-action="toggle-notifications" class="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"><i data-lucide="bell" class="h-5 w-5"></i></button>
-										<button data-action="toggle-theme" class="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"><i data-lucide="${state.darkMode ? 'sun-medium' : 'moon-star'}" class="h-5 w-5"></i></button>
-										<button data-action="toggle-profile" class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-											<span class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-cyan-400 text-xs font-black text-white">YT</span>
+										<div class="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 sm:inline-flex sm:items-center sm:gap-2"><i data-lucide="check-circle-2" class="h-3.5 w-3.5"></i>Connected</div>
+										<button data-action="toggle-notifications" class="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition  dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"><i data-lucide="bell" class="h-5 w-5"></i></button>
+										<button data-action="toggle-theme" class="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition  dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"><i data-lucide="${state.darkMode ? 'sun-medium' : 'moon-star'}" class="h-5 w-5"></i></button>
+										<button data-action="toggle-profile" class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition  dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+											<span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">YT</span>
 											<span class="hidden sm:inline">Y tá trưởng</span>
 											<i data-lucide="chevron-down" class="h-4 w-4"></i>
 										</button>
@@ -1331,7 +1204,7 @@
 
 		function renderFloatingPanels() {
 			const notifications = state.toastQueue.slice(0, 4).map((toast) => `
-				<div class="rounded-[26px] border ${toast.tone === 'danger' ? 'border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/10' : 'border-brand-200 bg-brand-50 dark:border-brand-500/20 dark:bg-brand-500/10'} p-4 shadow-soft">
+				<div class="rounded-[16px] border ${toast.tone === 'danger' ? 'border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/10' : 'border-brand-200 bg-brand-50 dark:border-brand-500/20 dark:bg-brand-500/10'} p-4 ">
 					<div class="flex items-start gap-3">
 						<div class="rounded-2xl ${toast.tone === 'danger' ? 'bg-red-600 text-white' : 'bg-brand-600 text-white'} p-2"><i data-lucide="${toast.tone === 'danger' ? 'triangle-alert' : 'bell'}" class="h-4 w-4"></i></div>
 						<div class="min-w-0 flex-1">
@@ -1346,7 +1219,7 @@
 			`).join('');
 
 			const profileMenu = state.profileOpen ? `
-				<div class="fixed right-4 top-20 z-50 w-[290px] rounded-[28px] border border-slate-200 bg-white p-3 shadow-soft dark:border-slate-800 dark:bg-slate-950 animate-pop sm:right-6 lg:right-8">
+				<div class="fixed right-4 top-20 z-50 w-[290px] rounded-[16px] border border-slate-200 bg-white p-3  dark:border-slate-800 dark:bg-slate-950  sm:right-6 lg:right-8">
 					<button data-action="switch-view" data-view="settings" class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><i data-lucide="settings-2" class="h-4 w-4"></i> Settings</button>
 					<button data-action="switch-view" data-view="history" class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><i data-lucide="history" class="h-4 w-4"></i> Lịch sử</button>
 					<button data-action="toggle-theme" class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><i data-lucide="${state.darkMode ? 'sun-medium' : 'moon-star'}" class="h-4 w-4"></i> ${state.darkMode ? 'Light mode' : 'Dark mode'}</button>
@@ -1356,39 +1229,39 @@
 			` : '';
 
 			const notificationsPanel = state.notificationsOpen ? `
-				<div class="fixed right-4 top-20 z-50 w-[340px] rounded-[28px] border border-slate-200 bg-white p-4 shadow-soft dark:border-slate-800 dark:bg-slate-950 animate-pop sm:right-6 lg:right-8">
+				<div class="fixed right-4 top-20 z-50 w-[340px] rounded-[16px] border border-slate-200 bg-white p-4  dark:border-slate-800 dark:bg-slate-950  sm:right-6 lg:right-8">
 					<div class="flex items-center justify-between">
 						<div>
 							<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Notification center</div>
-							<div class="text-xl font-black">${state.toastQueue.length} alerts</div>
+							<div class="text-xl font-bold">${state.toastQueue.length} alerts</div>
 						</div>
 						<button data-action="toggle-notifications" class="rounded-2xl p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900"><i data-lucide="x" class="h-4 w-4"></i></button>
 					</div>
 					<div class="mt-4 space-y-3 max-h-[60vh] overflow-auto pr-1 hide-scrollbar">
 						${state.toastQueue.map((toast) => `
-							<div class="rounded-[24px] ${toast.tone === 'danger' ? 'bg-red-50 dark:bg-red-500/10' : 'bg-brand-50 dark:bg-brand-500/10'} p-4">
+							<div class="rounded-[16px] ${toast.tone === 'danger' ? 'bg-red-50 dark:bg-red-500/10' : 'bg-brand-50 dark:bg-brand-500/10'} p-4">
 								<div class="font-bold">${toast.title}</div>
 								<div class="mt-1 text-sm text-slate-600 dark:text-slate-300">${toast.message}</div>
 								<div class="mt-2 text-xs text-slate-400">${formatTime(toast.time || new Date())}</div>
 							</div>
-						`).join('') || '<div class="rounded-[24px] bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">Không có thông báo mới</div>'}
+						`).join('') || '<div class="rounded-[16px] bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">Không có thông báo mới</div>'}
 					</div>
 				</div>
 			` : '';
 
 			const alertModal = state.alertModal ? `
-				<div class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
-					<div class="w-full max-w-2xl rounded-[34px] border border-red-300 bg-white p-6 shadow-soft animate-pop dark:border-red-500/20 dark:bg-slate-950">
+				<div class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 px-4 py-6 ">
+					<div class="w-full max-w-2xl rounded-[16px] border border-red-300 bg-white p-6   dark:border-red-500/20 dark:bg-slate-950">
 						<div class="flex items-start gap-4">
-							<div class="flex h-14 w-14 items-center justify-center rounded-[24px] bg-red-600 text-white pulse-critical"><i data-lucide="triangle-alert" class="h-7 w-7"></i></div>
+							<div class="flex h-14 w-14 items-center justify-center rounded-[16px] bg-red-600 text-white pulse-critical"><i data-lucide="triangle-alert" class="h-7 w-7"></i></div>
 							<div class="flex-1">
 								<div class="text-sm font-semibold uppercase tracking-[0.24em] text-red-500">Emergency alert</div>
-								<div class="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">${state.alertModal.patient.name}</div>
+								<div class="mt-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">${state.alertModal.patient.name}</div>
 								<div class="mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">${state.alertModal.type === 'critical' ? 'Phát hiện sự kiện khẩn cấp: té ngã, mất tín hiệu hoặc sinh hiệu bất thường.' : 'Cảnh báo cần kiểm tra ngay.'}</div>
 								<div class="mt-4 grid gap-3 sm:grid-cols-3">
-									<div class="rounded-[22px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold uppercase tracking-[0.18em] text-red-500">Time</div><div class="mt-2 font-black">${formatTime(state.alertModal.time)}</div></div>
-									<div class="rounded-[22px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold uppercase tracking-[0.18em] text-red-500">Kiosk</div><div class="mt-2 font-black">${state.alertModal.kiosk}</div></div>
-									<div class="rounded-[22px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold uppercase tracking-[0.18em] text-red-500">Room</div><div class="mt-2 font-black">${state.alertModal.patient.room}</div></div>
+									<div class="rounded-[12px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold uppercase tracking-[0.18em] text-red-500">Time</div><div class="mt-2 font-bold">${formatTime(state.alertModal.time)}</div></div>
+									<div class="rounded-[12px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold uppercase tracking-[0.18em] text-red-500">Kiosk</div><div class="mt-2 font-bold">${state.alertModal.kiosk}</div></div>
+									<div class="rounded-[12px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold uppercase tracking-[0.18em] text-red-500">Room</div><div class="mt-2 font-bold">${state.alertModal.patient.room}</div></div>
 								</div>
 							</div>
 							<button data-action="dismiss-alert" class="rounded-2xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-900 dark:hover:text-slate-200"><i data-lucide="x" class="h-5 w-5"></i></button>
@@ -1439,14 +1312,14 @@
 			if (state.loading) {
 				output = `
 					<div class="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-						<div class="card mx-auto max-w-7xl rounded-[34px] p-6 shadow-soft">
+						<div class="card mx-auto max-w-7xl rounded-[16px] p-6 ">
 							<div class="grid gap-4 md:grid-cols-4">
 								${Array.from({ length: 8 }).map(() => `
-									<div class="rounded-[26px] border border-slate-200 p-5 dark:border-slate-800">
-										<div class="skeleton animate-shimmer h-4 w-1/2 rounded-full"></div>
-										<div class="skeleton animate-shimmer mt-4 h-8 w-2/3 rounded-full"></div>
-										<div class="skeleton animate-shimmer mt-3 h-3 w-full rounded-full"></div>
-										<div class="skeleton animate-shimmer mt-2 h-3 w-5/6 rounded-full"></div>
+									<div class="rounded-[16px] border border-slate-200 p-5 dark:border-slate-800">
+										<div class="skeleton  h-4 w-1/2 rounded-full"></div>
+										<div class="skeleton  mt-4 h-8 w-2/3 rounded-full"></div>
+										<div class="skeleton  mt-3 h-3 w-full rounded-full"></div>
+										<div class="skeleton  mt-2 h-3 w-5/6 rounded-full"></div>
 									</div>
 								`).join('')}
 							</div>
