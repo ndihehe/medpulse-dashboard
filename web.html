@@ -741,6 +741,11 @@
 			return age >= 0 && age <= 130 ? age : null;
 		}
 
+		function getDaysInMonth(year, month) {
+			if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) return 0;
+			return new Date(year, month, 0).getDate();
+		}
+
 		function syncRegistrationBirthDate() {
 			const day = Number(state.registrationBirthDay);
 			const month = Number(state.registrationBirthMonth);
@@ -776,6 +781,8 @@
 				if (!Number.isInteger(month) || month < 1 || month > 12) return 'Tháng sinh phải là số từ 1 đến 12.';
 				if (!/^\d{4}$/.test(state.registrationBirthYear)) return 'Năm sinh phải gồm đủ 4 chữ số.';
 				if (year > new Date().getFullYear() || year < new Date().getFullYear() - 130) return 'Năm sinh không nằm trong phạm vi hợp lệ.';
+				const maximumDay = getDaysInMonth(year, month);
+				if (day > maximumDay) return `Tháng ${month} năm ${year} chỉ có ${maximumDay} ngày.`;
 				return 'Ngày sinh không tồn tại hoặc nằm sau ngày hiện tại.';
 			}
 
@@ -1510,7 +1517,7 @@
 			const currentYear = new Date().getFullYear();
 			const selectedYear = Number(state.registrationBirthYear) || currentYear;
 			const selectedMonth = Number(state.registrationBirthMonth) || 1;
-			const daysInSelectedMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+			const daysInSelectedMonth = getDaysInMonth(selectedYear, selectedMonth);
 			const dayOptions = Array.from({ length: daysInSelectedMonth }, (_, index) => index + 1).map(day => `<button type="button" data-action="select-birth-day" data-value="${day}" aria-selected="${Number(state.registrationBirthDay) === day}" class="birth-date-option rounded-lg px-2 py-2 text-sm font-semibold hover:bg-brand-50">${day}</button>`).join('');
 			const monthOptions = Array.from({ length: 12 }, (_, index) => index + 1).map(month => `<button type="button" data-action="select-birth-month" data-value="${month}" aria-selected="${Number(state.registrationBirthMonth) === month}" class="birth-date-option rounded-lg px-2 py-2 text-sm font-semibold hover:bg-brand-50">Tháng ${month}</button>`).join('');
 			const yearOptions = Array.from({ length: 131 }, (_, index) => currentYear - index).map(year => `<button type="button" data-action="select-birth-year" data-value="${year}" aria-selected="${Number(state.registrationBirthYear) === year}" class="birth-date-option w-full rounded-lg px-3 py-2 text-left text-sm font-semibold hover:bg-brand-50">${year}</button>`).join('');
