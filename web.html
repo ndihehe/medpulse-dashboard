@@ -200,6 +200,26 @@
 			background: rgba(var(--panel), 0.95);
 			backdrop-filter: blur(10px);
 		}
+		.notification-toast {
+			background: #ffffff;
+			border: 1px solid #d6e2ef;
+			box-shadow: 0 14px 36px rgba(13, 33, 55, 0.2);
+			color: #1a3a5c;
+			opacity: 1;
+			isolation: isolate;
+		}
+		.notification-toast--warning {
+			background: #fff8e8;
+			border-color: #f5c76f;
+		}
+		.notification-toast--danger {
+			background: #fff1f1;
+			border-color: #ef9a9a;
+		}
+		.notification-toast--info {
+			background: #eef7ff;
+			border-color: #90caf9;
+		}
 		.pulse-critical {
 			animation: pulseDanger 1.2s ease-in-out infinite;
 		}
@@ -1531,7 +1551,7 @@
 
 		function renderFloatingPanels() {
 			const notifications = state.toastQueue.slice(0, 4).map((toast) => `
-				<div ${toast.action ? `data-action="${toast.action}" data-id="${toast.patientId}" role="button"` : ''} class="rounded-[16px] border ${toast.tone === 'danger' ? 'border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/10' : toast.tone === 'warning' ? 'border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/10' : 'border-brand-200 bg-brand-50 dark:border-brand-500/20 dark:bg-brand-500/10'} p-4 ${toast.action ? 'cursor-pointer' : ''}">
+				<div ${toast.action ? `data-action="${toast.action}" data-id="${toast.patientId}" role="button"` : ''} class="notification-toast ${toast.tone === 'danger' ? 'notification-toast--danger' : toast.tone === 'warning' ? 'notification-toast--warning' : 'notification-toast--info'} w-[min(420px,calc(100vw-2rem))] rounded-[16px] p-4 ${toast.action ? 'cursor-pointer' : ''}">
 					<div class="flex items-start gap-3">
 						<div class="rounded-2xl ${toast.tone === 'danger' ? 'bg-red-600' : toast.tone === 'warning' ? 'bg-amber-600' : 'bg-brand-600'} p-2 text-white"><i data-lucide="${toast.tone === 'danger' || toast.tone === 'warning' ? 'triangle-alert' : 'bell'}" class="h-4 w-4"></i></div>
 						<div class="min-w-0 flex-1">
@@ -1602,7 +1622,7 @@
 				${profileMenu}
 				${notificationsPanel}
 				${alertModal}
-				<div class="fixed bottom-4 right-4 z-40 flex flex-col gap-3 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8">
+				<div class="fixed bottom-4 right-4 z-[70] flex flex-col items-end gap-3 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8">
 					${notifications}
 				</div>
 			`;
