@@ -11,22 +11,23 @@
 				theme: {
 					extend: {
 						fontFamily: {
-							sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui'],
+							sans: ['"Segoe UI"', 'Roboto', 'sans-serif'],
 						},
 						boxShadow: {
-							soft: '0 8px 24px rgba(15, 23, 42, 0.06)',
-							glow: '0 0 0 1px rgba(37, 99, 235, 0.14), 0 12px 28px rgba(37, 99, 235, 0.18)',
+							soft: '0 2px 8px rgba(26, 58, 92, 0.08)',
+							glow: '0 0 0 1px rgba(30, 136, 229, 0.18), 0 6px 18px rgba(21, 101, 192, 0.16)',
 						},
 						colors: {
 							brand: {
-								50: '#eff8ff',
-								100: '#dff2ff',
-								200: '#b9e6ff',
-								300: '#7ed3ff',
-								400: '#4bb9ff',
-								500: '#2196ff',
-								600: '#157be6',
-								700: '#115fb8',
+								50: '#e8f3fc',
+								100: '#d2e7f8',
+								200: '#a7cff1',
+								300: '#73b4e9',
+								400: '#42a0e3',
+								500: '#1e88e5',
+								600: '#1565c0',
+								700: '#0d47a1',
+								800: '#1a3a5c',
 							},
 						},
 						keyframes: {
@@ -46,54 +47,142 @@
 	<script src="https://cdn.tailwindcss.com"></script>
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-	<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
 	<style>
+		/* MedPulse design tokens: the single source of truth for the presentation layer. */
 		:root {
-			--bg: 248 250 252;
+			--color-primary: 21 101 192;
+			--color-primary-light: 30 136 229;
+			--color-primary-dark: 26 58 92;
+			--color-success: 46 125 50;
+			--color-warning: 245 124 0;
+			--color-danger: 211 47 47;
+			--bg: 255 255 255;
 			--panel: 255 255 255;
-			--panel-2: 241 245 249;
-			--text: 15 23 42;
-			--muted: 96 110 132;
-			--border: 226 232 240;
-			--shadow: 15 23 42;
-			--radius-sm: 12px;
-			--radius-md: 16px;
-			--radius-lg: 24px;
-			--brand: 37 99 235;
-			--safe: 22 101 52;
-			--warning: 180 83 9;
-			--danger: 185 28 28;
+			--panel-2: 240 244 248;
+			--text: 26 58 92;
+			--muted: 69 90 100;
+			--border: 227 234 242;
+			--shadow: 30 64 175;
+			--radius-sm: 6px;
+			--radius-md: 8px;
+			--radius-lg: 8px;
+			--brand: var(--color-primary);
+			--safe: var(--color-success);
+			--warning: var(--color-warning);
+			--danger: var(--color-danger);
+			--shadow-card: 0 2px 8px rgba(26, 58, 92, 0.08);
+			--shadow-raised: 0 8px 24px rgba(13, 33, 55, 0.18);
+			--focus-ring: 0 0 0 3px rgba(30, 136, 229, 0.22);
 		}
 		.dark {
 			--bg: 2 6 23;
 			--panel: 15 23 42;
 			--panel-2: 30 41 59;
-			--text: 238 243 255;
+			--text: 241 245 249;
 			--muted: 148 163 184;
-			--border: 35 47 72;
+			--border: 51 65 85;
 			--shadow: 0 0 0;
+			--shadow-card: 0 6px 20px rgba(0, 0, 0, 0.18);
+			--shadow-raised: 0 12px 32px rgba(0, 0, 0, 0.28);
 		}
 		html, body {
 			height: 100%;
 		}
 		body {
 			margin: 0;
-			font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui;
+			overflow-x: hidden;
+			font-family: 'Segoe UI', Roboto, sans-serif;
 			background: rgb(var(--bg));
 			color: rgb(var(--text));
+			font-size: 14px;
+			line-height: 1.5;
+			-webkit-font-smoothing: antialiased;
 			transition: background 0.35s ease, color 0.35s ease;
 		}
+		html:not(.dark) .text-slate-900 {
+			color: rgb(var(--text)) !important;
+		}
+		html:not(.dark) :where(input, select, textarea) {
+			background: rgb(var(--panel-2)) !important;
+			border-color: rgb(var(--border)) !important;
+			color: rgb(var(--text)) !important;
+		}
+		::selection {
+			background: rgba(var(--color-primary-light), 0.22);
+		}
+		:where(button, a, input, select, textarea):focus-visible {
+			outline: none;
+			box-shadow: var(--focus-ring);
+		}
 		.glass {
-			background: rgba(var(--panel), 0.92);
+			background: rgba(var(--panel), 0.96);
 			backdrop-filter: blur(12px);
 			-webkit-backdrop-filter: blur(12px);
-			border: 1px solid rgba(var(--border), 0.8);
+			border: 1px solid rgb(var(--border));
 		}
 		.card {
 			background: rgb(var(--panel));
-			border: 1px solid rgba(var(--border), 0.9);
-			box-shadow: none;
+			border: 1px solid rgb(var(--border));
+			border-radius: var(--radius-md);
+			box-shadow: var(--shadow-card);
 		}
+		.ui-card {
+			background: rgb(var(--panel));
+			border: 1px solid rgb(var(--border));
+			border-radius: var(--radius-md);
+			box-shadow: var(--shadow-card);
+		}
+		.ui-btn {
+			display: inline-flex;
+			min-height: 40px;
+			align-items: center;
+			justify-content: center;
+			gap: 0.5rem;
+			border-radius: var(--radius-sm);
+			padding: 0.625rem 1rem;
+			font-weight: 700;
+			transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+		}
+		.ui-btn:active { transform: translateY(1px); }
+		.ui-btn-primary {
+			border: 1px solid rgb(var(--color-primary));
+			background: rgb(var(--color-primary));
+			color: #fff;
+		}
+		.ui-btn-primary:hover { background: rgb(var(--color-primary-dark)); }
+		.ui-btn-secondary {
+			border: 1px solid rgb(var(--border));
+			background: rgb(var(--panel-2));
+			color: rgb(var(--color-primary));
+		}
+		.ui-btn-secondary:hover { background: rgb(var(--panel-2)); }
+		.ui-badge {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.375rem;
+			border-radius: 999px;
+			padding: 0.25rem 0.625rem;
+			font-size: 0.75rem;
+			font-weight: 700;
+		}
+		.ui-badge-safe { background: rgba(var(--color-success), 0.1); color: rgb(var(--color-success)); }
+		.ui-badge-warning { background: rgba(var(--color-warning), 0.13); color: #92400e; }
+		.ui-badge-danger { background: rgba(var(--color-danger), 0.1); color: rgb(var(--color-danger)); }
+		.ui-badge-info { background: rgba(var(--color-primary), 0.1); color: rgb(var(--color-primary-dark)); }
+		.ui-alert {
+			border: 1px solid rgba(var(--color-danger), 0.25);
+			border-left: 4px solid rgb(var(--color-danger));
+			border-radius: var(--radius-sm);
+			background: rgba(var(--color-danger), 0.06);
+			color: rgb(var(--text));
+		}
+		.ui-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+		.ui-table thead { background: rgb(var(--panel-2)); color: rgb(var(--color-primary-dark)); }
+		.ui-table th { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+		.ui-table th, .ui-table td { border-bottom: 1px solid rgb(var(--border)); padding: 0.875rem 1rem; text-align: left; }
+		.ui-table tbody tr:nth-child(even) { background: rgba(var(--panel-2), 0.46); }
+		.ui-table tbody tr:hover { background: rgba(var(--color-primary), 0.05); }
 		.noise {
 			display: none;
 		}
@@ -117,6 +206,279 @@
 		.skeleton {
 			background: rgb(var(--panel-2));
 		}
+
+		/* UTEx-inspired MedPulse skin. Presentation-only overrides. */
+		html:not(.dark) body {
+			background: #ffffff;
+			color: #455a64;
+		}
+		html:not(.dark) :where(h1, h2, h3, h4, h5, h6, .text-slate-900) {
+			color: #1a3a5c !important;
+		}
+
+		/* Topbar */
+		header.sticky {
+			background: #0d2137 !important;
+			border-bottom: 2px solid #1e88e5 !important;
+			color: #ffffff !important;
+		}
+		header.sticky > div { min-height: 56px !important; }
+		header.sticky :where(.text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600, .text-slate-500, .dark\:text-white, .dark\:text-slate-300) {
+			color: #ffffff !important;
+		}
+		header.sticky .text-slate-900,
+		header.sticky .text-slate-800,
+		header.sticky .text-slate-700,
+		header.sticky .text-slate-600,
+		header.sticky .text-slate-500 { color: #ffffff !important; }
+		header.sticky button {
+			background: rgba(255, 255, 255, 0.08) !important;
+			border-color: rgba(255, 255, 255, 0.22) !important;
+			color: #ffffff !important;
+			border-radius: 6px !important;
+		}
+		header.sticky button:hover { background: rgba(255, 255, 255, 0.15) !important; }
+		header:not(.sticky) {
+			background: #0d2137 !important;
+			border-color: rgba(255, 255, 255, 0.15) !important;
+			border-bottom: 2px solid #1e88e5 !important;
+			color: #ffffff !important;
+		}
+		header:not(.sticky) :where(.text-slate-900, .text-slate-700, .text-slate-600) { color: #ffffff !important; }
+		.landing-screen {
+			background:
+				radial-gradient(circle at bottom left, #a9d6f8 0%, #c9e5fa 26%, rgba(225, 242, 255, 0.72) 44%, transparent 66%),
+				linear-gradient(180deg, #ffffff 0%, #ffffff 28%, #f5faff 58%, #e7f4ff 100%);
+		}
+		header.landing-titlebar {
+			min-height: 112px;
+			background: rgba(255, 255, 255, 0.86) !important;
+			border: 1px solid rgba(30, 136, 229, 0.26) !important;
+			border-bottom: 3px solid #1e88e5 !important;
+			border-radius: 14px !important;
+			box-shadow: 0 8px 24px rgba(26, 58, 92, 0.1);
+			backdrop-filter: blur(12px);
+		}
+		header.landing-titlebar .landing-system-title { color: #1a3a5c !important; }
+		.landing-hero { position: relative; }
+		.landing-eyebrow {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.5rem;
+			border: 1px solid rgba(21, 101, 192, 0.18);
+			border-radius: 999px;
+			background: rgba(255, 255, 255, 0.78);
+			padding: 0.5rem 0.9rem;
+			color: #1565c0;
+			font-size: 0.78rem;
+			font-weight: 700;
+			letter-spacing: 0.02em;
+			box-shadow: 0 4px 14px rgba(26, 58, 92, 0.06);
+			backdrop-filter: blur(8px);
+		}
+		.landing-live-dot {
+			width: 8px;
+			height: 8px;
+			border-radius: 999px;
+			background: #2e7d32;
+			box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.12);
+			animation: livePulse 2s ease-in-out infinite;
+		}
+		.landing-hero-title {
+			background: linear-gradient(110deg, #1a3a5c 10%, #1565c0 70%, #1e88e5 100%);
+			-webkit-background-clip: text;
+			background-clip: text;
+			color: transparent !important;
+		}
+		.landing-hero-copy { color: #455a64; }
+		.landing-cta {
+			display: inline-flex;
+			min-height: 48px;
+			align-items: center;
+			justify-content: center;
+			gap: 0.7rem;
+			border: 0;
+			border-radius: 8px;
+			background: linear-gradient(135deg, #1565c0, #1e88e5);
+			padding: 0.8rem 1.5rem;
+			color: #ffffff;
+			font-weight: 700;
+			box-shadow: 0 10px 24px rgba(21, 101, 192, 0.22);
+			transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+		}
+		.landing-cta:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 14px 30px rgba(21, 101, 192, 0.28);
+			filter: saturate(1.08);
+		}
+		.landing-feature-card {
+			min-height: 176px;
+			border: 1px solid rgba(21, 101, 192, 0.14);
+			border-radius: 12px;
+			background: rgba(255, 255, 255, 0.78);
+			padding: 1.25rem;
+			box-shadow: 0 6px 18px rgba(26, 58, 92, 0.07);
+			backdrop-filter: blur(10px);
+			transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+		}
+		.landing-feature-card:hover {
+			transform: translateY(-4px);
+			border-color: rgba(30, 136, 229, 0.5);
+			background: #ffffff;
+			box-shadow: 0 12px 28px rgba(21, 101, 192, 0.14);
+		}
+		.landing-feature-icon {
+			display: inline-flex;
+			width: 46px;
+			height: 46px;
+			align-items: center;
+			justify-content: center;
+			border-radius: 10px;
+		}
+		.landing-feature-icon.blue { background: #e3f2fd; color: #1565c0; }
+		.landing-feature-icon.orange { background: #fff3e0; color: #f57c00; }
+		.landing-feature-icon.green { background: #e8f5e9; color: #2e7d32; }
+		@keyframes livePulse {
+			0%, 100% { opacity: 1; transform: scale(1); }
+			50% { opacity: 0.65; transform: scale(0.86); }
+		}
+
+		/* Sidebar */
+		aside {
+			background: #1a3a5c !important;
+			border-color: rgba(255, 255, 255, 0.12) !important;
+			color: #ffffff !important;
+		}
+		aside > div:first-child {
+			height: 56px !important;
+			border-color: rgba(255, 255, 255, 0.12) !important;
+		}
+		aside :where(.text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600, .text-slate-500, .text-slate-400) {
+			color: #ffffff !important;
+		}
+		aside .text-slate-900,
+		aside .text-slate-800,
+		aside .text-slate-700,
+		aside .text-slate-600,
+		aside .text-slate-500,
+		aside .text-slate-400 { color: #ffffff !important; }
+		html:not(.dark) aside .text-slate-900,
+		html:not(.dark) aside .text-slate-800,
+		html:not(.dark) aside .text-slate-700,
+		html:not(.dark) aside .text-slate-600,
+		html:not(.dark) aside .text-slate-500,
+		html:not(.dark) aside .text-slate-400 { color: #ffffff !important; }
+		aside nav button {
+			color: #ffffff !important;
+			border-radius: 6px !important;
+		}
+		aside nav button:hover { background: rgba(255, 255, 255, 0.08) !important; }
+		aside nav button[style*="box-shadow"] {
+			background: rgba(255, 255, 255, 0.12) !important;
+			color: #ffffff !important;
+			box-shadow: inset 3px 0 0 #1e88e5 !important;
+		}
+		aside nav button[style*="box-shadow"] > span:first-child {
+			background: #1e88e5 !important;
+			color: #ffffff !important;
+		}
+		aside > div:last-child {
+			border-color: rgba(255, 255, 255, 0.12) !important;
+		}
+		aside > div:last-child > div { background: rgba(255, 255, 255, 0.08) !important; }
+
+		/* Cards and panel headers */
+		.card, .ui-card {
+			background: #ffffff;
+			border: 1px solid #e3eaf2;
+			border-radius: 8px !important;
+			box-shadow: 0 2px 8px rgba(26, 58, 92, 0.08);
+		}
+		.card > .border-b:first-child {
+			background: linear-gradient(135deg, #1565c0, #1e88e5) !important;
+			border-color: transparent !important;
+			color: #ffffff !important;
+		}
+		.card > .border-b:first-child :where(h1, h2, h3, p, div, span) { color: #ffffff !important; }
+		.card > .border-b:first-child .ui-btn-secondary {
+			background: rgba(255, 255, 255, 0.12) !important;
+			border-color: rgba(255, 255, 255, 0.7) !important;
+			color: #ffffff !important;
+		}
+
+		/* Buttons and controls */
+		.ui-btn { border-radius: 6px !important; }
+		.ui-btn-primary {
+			background: #1565c0 !important;
+			border-color: #1565c0 !important;
+			color: #ffffff !important;
+		}
+		.ui-btn-primary:hover { background: #0d47a1 !important; border-color: #0d47a1 !important; }
+		.ui-btn-secondary {
+			background: #ffffff !important;
+			border: 2px solid #1565c0 !important;
+			color: #1565c0 !important;
+		}
+		.ui-btn-secondary:hover { background: #1565c0 !important; color: #ffffff !important; }
+		html:not(.dark) :where(input, select, textarea) {
+			background: #f0f4f8 !important;
+			border-color: #e3eaf2 !important;
+			border-radius: 6px !important;
+			color: #1a3a5c !important;
+		}
+
+		/* Tables, charts and clinical states */
+		.ui-table thead {
+			background: linear-gradient(135deg, #1565c0, #1e88e5) !important;
+			color: #ffffff !important;
+		}
+		.ui-table thead th { color: #ffffff !important; }
+		.ui-table tbody tr:nth-child(even) { background: #f0f4f8; }
+		.ui-table tbody tr:hover { background: #e8f3fc; }
+		svg path[stroke="#2563eb"] { stroke: #1e88e5 !important; }
+		svg path[fill="rgba(37,99,235,0.12)"] { fill: rgba(30, 136, 229, 0.12) !important; }
+		html:not(.dark) :where(.text-emerald-600, .text-emerald-700, .text-emerald-800) { color: #2e7d32 !important; }
+		html:not(.dark) :where(.text-amber-600, .text-amber-700, .text-amber-800) { color: #f57c00 !important; }
+		html:not(.dark) :where(.text-red-600, .text-red-700, .text-red-800) { color: #d32f2f !important; }
+		html:not(.dark) .bg-emerald-50 { background: rgba(46, 125, 50, 0.09) !important; }
+		html:not(.dark) .bg-amber-50 { background: rgba(245, 124, 0, 0.09) !important; }
+		html:not(.dark) .bg-red-50 { background: rgba(211, 47, 47, 0.09) !important; }
+
+		/* Keep the clinical workspace readable even when an old dark-mode preference is stored. */
+		html.dark body { background: #ffffff !important; color: #455a64 !important; }
+		html.dark main { background: #ffffff !important; color: #455a64 !important; }
+		html.dark main [class*="dark:bg-slate"] { background: #f0f4f8 !important; }
+		html.dark main [class*="dark:text-slate"],
+		html.dark main [class*="dark:text-white"] { color: #455a64 !important; }
+		html.dark main :where(h1, h2, h3, h4, h5, h6, .text-slate-900, .text-slate-800) { color: #1a3a5c !important; }
+		main .text-slate-700,
+		main .text-slate-600,
+		main .text-slate-500 { color: #455a64 !important; }
+		main .text-slate-900,
+		main .text-slate-800 { color: #1a3a5c !important; }
+		html.dark :where(input, select, textarea) {
+			background: #f0f4f8 !important;
+			border-color: #e3eaf2 !important;
+			color: #1a3a5c !important;
+		}
+		main :where(.text-emerald-600, .text-emerald-700, .text-emerald-800) { color: #2e7d32 !important; }
+		main :where(.text-amber-600, .text-amber-700, .text-amber-800) { color: #f57c00 !important; }
+		main :where(.text-red-600, .text-red-700, .text-red-800) { color: #d32f2f !important; }
+
+		/* Clear light-blue hover feedback for every interactive data row. */
+		aside nav button:hover { background: rgba(30, 136, 229, 0.28) !important; }
+		.ui-table tbody tr:hover,
+		.ui-table tbody tr:hover td { background: #e3f2fd !important; }
+		main button[data-action="open-patient"]:hover,
+		main .ui-btn-secondary:hover { background: #e3f2fd !important; color: #1565c0 !important; }
+		@media (prefers-reduced-motion: reduce) {
+			*, *::before, *::after {
+				scroll-behavior: auto !important;
+				animation-duration: 0.01ms !important;
+				animation-iteration-count: 1 !important;
+				transition-duration: 0.01ms !important;
+			}
+		}
 	</style>
 </head>
 <body class="text-slate-900 dark:text-slate-100">
@@ -125,7 +487,6 @@
 	<script src="https://unpkg.com/lucide@latest"></script>
 	<script>
 		const STORAGE_KEY = 'medpulse-dashboard-v1';
-		const THEME_KEY = 'medpulse-theme';
 		const DEMO_PASSWORD = 'demo123';
 
 		const state = {
@@ -133,7 +494,6 @@
 			screen: 'landing',
 			view: 'dashboard',
 			sidebarOpen: true,
-			darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
 			notificationsOpen: false,
 			profileOpen: false,
 			settingsOpen: false,
@@ -164,7 +524,6 @@
 		let patients = [];
 
 		// Hàm tiện ích (dùng cho biểu đồ & UI, không còn sinh dữ liệu ảo)
-		function rand(min, max) { return Math.random() * (max - min) + min; }
 		function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
 
 		function formatTime(date) {
@@ -317,14 +676,14 @@
 			const chartFill = accent.includes('emerald') ? 'rgba(22,163,74,0.14)' : accent.includes('red') ? 'rgba(220,38,38,0.14)' : accent.includes('amber') ? 'rgba(217,119,6,0.14)' : 'rgba(37,99,235,0.12)';
 
 			return `
-				<div class="card rounded-[16px] p-5 md:p-6">
+				<div class="card p-5 md:p-6">
 					<div class="mb-4 flex items-start justify-between gap-4">
 						<div>
-							<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${title}</div>
-							<div class="mt-1 text-2xl font-bold tracking-tight">${isEmpty ? '---' : validSeries[validSeries.length - 1]}<span class="ml-1 text-sm font-semibold text-slate-500">${unit}</span></div>
+							<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">${title}</div>
+							<div class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">${isEmpty ? '---' : validSeries[validSeries.length - 1]}<span class="ml-1 text-sm font-semibold text-slate-600 dark:text-slate-300">${unit}</span></div>
 						</div>
 						<div class="text-right">
-							<div class="text-xs uppercase tracking-[0.24em] text-slate-400">Độ biến thiên</div>
+							<div class="text-xs font-semibold text-slate-600 dark:text-slate-300">Độ biến thiên</div>
 							<div class="mt-1 text-sm font-semibold ${accent}">${isEmpty ? 'Chờ dữ liệu...' : `${min} - ${max} ${unit}`}</div>
 						</div>
 					</div>
@@ -422,78 +781,38 @@
 
 		function renderLanding() {
 			return `
-				<div class="min-h-screen bg-slate-50 dark:bg-slate-950">
+				<div class="landing-screen min-h-screen overflow-x-hidden">
 					<div class="mx-auto flex min-h-screen max-w-5xl flex-col justify-between px-4 py-5 sm:px-6 lg:px-8">
-						<header class="glass rounded-[16px] px-5 py-4">
-							<div class="flex items-center justify-between gap-4">
-								<div class="flex items-center gap-3">
-									<div class="flex h-11 w-11 items-center justify-center rounded-[12px] bg-brand-600 text-white">
-										<i data-lucide="heart-pulse" class="h-5 w-5"></i>
-									</div>
-									<div>
-										<div class="text-base font-bold tracking-tight">MedPulse</div>
-										<div class="text-xs text-slate-500 dark:text-slate-400">Hệ thống giám sát sức khỏe người cao tuổi</div>
-									</div>
-								</div>
-								<div class="flex items-center gap-2">
-									<button data-action="toggle-theme" class="inline-flex items-center gap-2 rounded-[12px] border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 transition dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-										<i data-lucide="${state.darkMode ? 'sun' : 'moon-star'}" class="h-4 w-4"></i>
-										<span class="hidden sm:inline">${state.darkMode ? 'Sáng' : 'Tối'}</span>
-									</button>
-									<button data-action="show-login" class="inline-flex items-center gap-2 rounded-[12px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700">
-										<i data-lucide="log-in" class="h-4 w-4"></i><span>Đăng nhập</span>
-									</button>
-								</div>
-							</div>
+						<header class="landing-titlebar flex items-center justify-center px-5 py-7 text-center sm:px-8 sm:py-8">
+							<h1 class="landing-system-title text-2xl font-bold uppercase leading-tight tracking-wide sm:text-3xl lg:text-4xl">Hệ thống giám sát và cảnh báo sức khỏe người cao tuổi</h1>
 						</header>
-						<main class="flex flex-1 flex-col items-center justify-center py-16 text-center">
-							<h1 class="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl dark:text-white">
-								MedPulse
-							</h1>
-							<p class="mt-5 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300">
-								Bảng điều khiển lâm sàng theo dõi nhịp tim, SpO₂, nhiệt độ và té ngã theo thời gian thực từ thiết bị ESP32.
+						<main class="landing-hero flex min-w-0 flex-1 flex-col items-center justify-center py-14 text-center sm:py-16">
+							<div class="landing-eyebrow"><span class="landing-live-dot"></span><i data-lucide="radio" class="h-4 w-4"></i>Giám sát trực tuyến 24/7</div>
+							<h2 class="landing-hero-title mt-6 w-full max-w-4xl break-words text-3xl font-bold leading-tight tracking-tight sm:text-5xl">Chăm sóc chủ động từ dữ liệu sinh hiệu thời gian thực</h2>
+							<p class="landing-hero-copy mt-5 max-w-2xl text-base leading-7">
+								Theo dõi nhịp tim, SpO₂, nhiệt độ và phát hiện té ngã từ thiết bị ESP32 — tập trung trong một trung tâm giám sát rõ ràng, nhanh chóng.
 							</p>
-							<div class="mt-8 flex flex-wrap items-center justify-center gap-3">
-								<button data-action="show-login" class="rounded-[12px] bg-brand-600 px-7 py-3.5 text-sm font-bold text-white transition hover:bg-brand-700">
-									Vào hệ thống
-								</button>
-								<button data-action="show-login" class="rounded-[12px] border border-slate-200 bg-white px-7 py-3.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
-									Đăng nhập demo
-								</button>
+							<button data-action="demo-login" class="landing-cta mt-8"><span>Vào trung tâm giám sát</span><i data-lucide="arrow-right" class="h-5 w-5"></i></button>
+							<div class="mt-12 grid w-full max-w-4xl gap-4 text-left sm:grid-cols-3">
+								${[
+									['heart-pulse', 'blue', 'Theo dõi sinh hiệu', 'Cập nhật nhịp tim, SpO₂ và nhiệt độ theo thời gian thực.'],
+									['triangle-alert', 'orange', 'Cảnh báo tức thời', 'Ưu tiên sự cố té ngã và chỉ số sức khỏe bất thường.'],
+									['shield-check', 'green', 'Quản lý thiết bị', 'Theo dõi trạng thái kết nối, tín hiệu và dung lượng pin.'],
+								].map(([icon, tone, title, note]) => `<div class="landing-feature-card"><div class="landing-feature-icon ${tone}"><i data-lucide="${icon}" class="h-6 w-6"></i></div><div class="mt-4 text-base font-bold text-slate-900">${title}</div><div class="mt-2 text-sm leading-6 text-slate-600">${note}</div></div>`).join('')}
 							</div>
 						</main>
-						<footer class="pb-2 text-center text-xs text-slate-400 dark:text-slate-600">
+						<footer class="pb-2 text-center text-xs font-medium text-slate-600 dark:text-slate-400">
 							MedPulse · Hệ thống giám sát sức khỏe người cao tuổi · Hoạt động 24/7
 						</footer>
 					</div>
 				</div>
 			`;
 		}
-
-		function renderLanding_UNUSED_PLACEHOLDER() {
-			return `<div>
-				<div>
-					<div>
-					</div>
-										</div>
-									</div>
-								</div>
-							</section>
-						</main>
-
-						<footer class="pb-2 text-center text-sm text-slate-500 dark:text-slate-400">
-							Thiết kế tối ưu cho bệnh viện, viện dưỡng lão, y tá lớn tuổi và hoạt động realtime 24/7.
-						</footer>
-					</div>
-				</div>
-			`;
-		}
-
 		function renderLogin() {
 			return `
-				<div class="min-h-screen bg-slate-50 dark:bg-slate-950">
+				<div class="min-h-screen bg-[rgb(var(--panel-2))] dark:bg-slate-950">
 					<div class="mx-auto flex min-h-screen max-w-md items-center justify-center px-4 py-10 sm:px-6">
-							<section class="card w-full rounded-[24px] p-6">
+							<section class="card w-full p-6 sm:p-8">
 								<div class="flex items-center justify-between">
 									<div>
 										<div class="flex items-center gap-3">
@@ -501,29 +820,30 @@
 												<i data-lucide="shield-plus" class="h-5 w-5"></i>
 											</div>
 											<div>
-												<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">MedPulse Access</div>
-												<div class="mt-1 text-2xl font-bold tracking-tight">Đăng nhập</div>
+												<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">MedPulse</div>
+												<div class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Đăng nhập hệ thống</div>
 											</div>
 										</div>
-										<p class="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">Truy cập trung tâm giám sát bệnh nhân realtime.</p>
+									<p class="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">Truy cập trung tâm giám sát bệnh nhân theo thời gian thực.</p>
 									</div>
 								</div>
 								<div class="mt-6 space-y-5">
 									<label class="block">
 										<span class="mb-2 block text-sm font-semibold text-slate-600 dark:text-slate-300">Tên người dùng</span>
-										<input data-bind="inputName" value="${escapeHtml(state.inputName || 'nurse.le') }" placeholder="nurse.le" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15" />
+										<input data-bind="inputName" value="${escapeHtml(state.inputName || 'nurse.le') }" placeholder="nurse.le" class="w-full rounded-xl border border-[rgb(var(--border))] bg-white px-4 py-3.5 text-base text-slate-900 outline-none placeholder:text-slate-500 focus:border-brand-500 dark:bg-slate-950 dark:text-white" />
 									</label>
 									<label class="block">
 										<span class="mb-2 block text-sm font-semibold text-slate-600 dark:text-slate-300">Mã PIN</span>
-										<input data-bind="loginPin" value="${escapeHtml(state.loginPin)}" type="password" placeholder="••••••" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15" />
+										<input data-bind="loginPin" value="${escapeHtml(state.loginPin)}" type="password" placeholder="••••••" class="w-full rounded-xl border border-[rgb(var(--border))] bg-white px-4 py-3.5 text-base text-slate-900 outline-none placeholder:text-slate-500 focus:border-brand-500 dark:bg-slate-950 dark:text-white" />
 									</label>
 									<div class="grid gap-3 sm:grid-cols-2">
-										<button data-action="demo-login" class="rounded-[12px] bg-brand-600 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-brand-700">Vào dashboard</button>
-										<button data-action="fill-demo" class="rounded-[12px] border border-slate-200 bg-white px-5 py-3.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">Điền demo</button>
+										<button data-action="demo-login" class="ui-btn ui-btn-primary">Vào dashboard</button>
+										<button data-action="fill-demo" class="ui-btn ui-btn-secondary">Điền tài khoản demo</button>
 									</div>
-									<div class="rounded-[16px] border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-300">
-										Demo credentials: <span class="font-bold text-slate-900 dark:text-white">nurse.le</span> / <span class="font-bold text-slate-900 dark:text-white">demo123</span>
+									<div class="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--panel-2))] p-4 text-sm text-slate-700 dark:text-slate-300">
+										Tài khoản demo: <span class="font-bold text-slate-900 dark:text-white">nurse.le</span> / <span class="font-bold text-slate-900 dark:text-white">demo123</span>
 									</div>
+									<button data-action="show-landing" class="w-full text-sm font-semibold text-slate-600 hover:text-brand-700 dark:text-slate-300"><i data-lucide="arrow-left" class="mr-1 inline h-4 w-4"></i>Quay lại trang giới thiệu</button>
 								</div>
 							</section>
 					</div>
@@ -535,57 +855,42 @@
 			const nav = [
 				['dashboard', 'Tổng quan', 'layout-dashboard'],
 				['patients', 'Bệnh nhân', 'users'],
-				['detail', 'Chi tiết bệnh nhân', 'stethoscope'],
-				['history', 'Lịch sử dữ liệu', 'calendar-clock'],
+				['history', 'Lịch sử', 'chart-no-axes-combined'],
 				['settings', 'Thiết lập', 'settings-2'],
 			];
+			const monitoredPatients = patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length;
+			const connected = state.mqttStatus === 'connected';
 			return `
-				<aside class="${state.sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} fixed inset-y-0 left-0 z-40 flex w-[290px] flex-col border-r border-slate-200/70 bg-[rgb(var(--panel))]/95   transition-transform duration-300 dark:border-slate-800/70 lg:static lg:z-auto">
-					<div class="flex items-center justify-between gap-3 border-b border-slate-200/70 px-5 py-5 dark:border-slate-800/70">
+				<aside class="${state.sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-[rgb(var(--border))] bg-[rgb(var(--panel-2))] shadow-[var(--shadow-raised)] transition-transform duration-300 lg:static lg:z-auto lg:shadow-none">
+					<div class="flex h-[73px] items-center justify-between gap-3 border-b border-[rgb(var(--border))] px-5">
 						<div class="flex items-center gap-3">
-							<div class="flex h-12 w-12 items-center justify-center rounded-[12px] bg-brand-600 text-white"><i data-lucide="activity" class="h-6 w-6"></i></div>
+							<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm"><i data-lucide="activity" class="h-5 w-5"></i></div>
 							<div>
-								<div class="text-lg font-bold tracking-tight">MedPulse</div>
-								<div class="text-xs font-medium uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Health-tech</div>
+								<div class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">MedPulse</div>
+								<div class="text-xs font-medium text-slate-600 dark:text-slate-300">Theo dõi bệnh nhân</div>
 							</div>
 						</div>
-						<button data-action="toggle-sidebar" class="rounded-2xl p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-900 lg:hidden"><i data-lucide="panel-left-close" class="h-5 w-5"></i></button>
+						<button data-action="toggle-sidebar" aria-label="Đóng menu" class="rounded-xl p-2 text-slate-500 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"><i data-lucide="x" class="h-5 w-5"></i></button>
 					</div>
-					<div class="flex-1 overflow-y-auto px-4 py-5 hide-scrollbar">
-						<div class="rounded-[16px] border border-slate-800 bg-slate-950 p-5 text-white">
-							<div class="flex items-center justify-between">
-								<div>
-									<div class="text-xs uppercase tracking-[0.24em] text-slate-400">Realtime</div>
-									<div class="mt-2 text-2xl font-bold">${patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length}/${patients.length > 0 ? patients.length : '0'}</div>
-								</div>
-								<div class="rounded-[12px] bg-white/10 p-3"><i data-lucide="activity" class="h-6 w-6 text-brand-200"></i></div>
-							</div>
-							<div class="mt-4 text-sm leading-6 text-slate-300">Kiosk ${state.kioskStatus} · MQTT ${state.mqttStatus} · Wi-Fi ${state.wifiStatus}</div>
-						</div>
-						<nav class="mt-5 space-y-1.5">
+					<div class="flex-1 overflow-y-auto px-4 py-6 hide-scrollbar">
+						<div class="px-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">Điều hướng</div>
+						<nav class="mt-3 space-y-1.5" aria-label="Điều hướng chính">
 							${nav.map(([key, label, icon]) => `
-								<button data-action="switch-view" data-view="${key}" class="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition ${state.view === key ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900/70'}">
-									<span class="flex h-10 w-10 items-center justify-center rounded-2xl ${state.view === key ? 'bg-white shadow-sm dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-900'}"><i data-lucide="${icon}" class="h-5 w-5"></i></span>
+								<button data-action="switch-view" data-view="${key}" style="${state.view === key || (key === 'patients' && state.view === 'detail') ? 'background: rgb(219 234 254); color: rgb(var(--color-primary-dark)); box-shadow: inset 3px 0 0 rgb(var(--color-primary));' : ''}" class="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${state.view === key || (key === 'patients' && state.view === 'detail') ? '' : 'text-slate-700 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800'}">
+									<span style="${state.view === key || (key === 'patients' && state.view === 'detail') ? 'background: rgba(255,255,255,.72); color: rgb(var(--color-primary-dark));' : ''}" class="flex h-9 w-9 items-center justify-center rounded-lg ${state.view === key || (key === 'patients' && state.view === 'detail') ? '' : 'bg-brand-50 text-brand-700 dark:bg-slate-800 dark:text-brand-300'}"><i data-lucide="${icon}" class="h-[18px] w-[18px]"></i></span>
 									<span class="font-semibold">${label}</span>
+									${key === 'patients' && patients.length ? `<span style="${state.view === key || state.view === 'detail' ? 'background:rgba(255,255,255,.8);color:rgb(var(--color-primary-dark));' : ''}" class="ml-auto rounded-full ${state.view === key || state.view === 'detail' ? '' : 'bg-brand-100 text-brand-800 dark:bg-brand-500/20 dark:text-brand-200'} px-2 py-0.5 text-xs font-bold">${patients.length}</span>` : ''}
 								</button>
 							`).join('')}
 						</nav>
-
-						<div class="mt-6 rounded-[16px] border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60">
-							<div class="flex items-center justify-between">
-								<div>
-									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Notification center</div>
-									<div class="mt-1 text-lg font-bold">${state.toastQueue.length} mới</div>
-								</div>
-								<button data-action="toggle-notifications" class="rounded-2xl bg-white p-2.5 text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-200"><i data-lucide="bell" class="h-5 w-5"></i></button>
+					</div>
+					<div class="border-t border-[rgb(var(--border))] p-4">
+						<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4">
+							<div class="flex items-center justify-between gap-3">
+								<div class="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200"><span class="h-2.5 w-2.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-red-500'}"></span>Hệ thống</div>
+								<span class="text-xs font-semibold ${connected ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'}">${connected ? 'Trực tuyến' : 'Gián đoạn'}</span>
 							</div>
-							<div class="mt-4 space-y-3">
-								${state.toastQueue.slice(0, 2).map((toast) => `
-									<div class="rounded-2xl ${toast.tone === 'danger' ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-200' : 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-200'} px-3 py-3 text-sm font-semibold">
-										${toast.message}
-									</div>
-								`).join('') || '<div class="rounded-2xl bg-white px-3 py-3 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">Không có cảnh báo mới</div>'}
-							</div>
+							<div class="mt-3 flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-300"><span>Đang theo dõi</span><strong class="text-slate-700 dark:text-slate-200">${monitoredPatients}/${patients.length}</strong></div>
 						</div>
 					</div>
 				</aside>
@@ -594,173 +899,96 @@
 
 		function metricCard(title, value, delta, icon, tone, note) {
 			const toneClass = {
-				brand: 'bg-brand-600',
-				safe: 'bg-emerald-600',
-				warning: 'bg-amber-600',
-				danger: 'bg-red-600',
-			}[tone] || 'bg-brand-600';
+				brand: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
+				safe: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
+				warning: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
+				danger: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300',
+			}[tone] || 'bg-brand-50 text-brand-700';
 			return `
-				<div class="card rounded-[16px] p-5">
-					<div class="flex items-start justify-between gap-4">
+				<div class="card p-5">
+					<div class="flex items-center justify-between gap-4">
 						<div>
-							<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${title}</div>
-							<div class="mt-2 text-3xl font-bold tracking-tight">${value}</div>
-							<div class="mt-2 text-sm font-semibold ${delta.startsWith('+') ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}">${delta}</div>
-							<div class="mt-2 text-xs text-slate-400 dark:text-slate-500">${note}</div>
+							<div class="text-sm font-medium text-slate-600 dark:text-slate-300">${title}</div>
+							<div class="mt-1 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">${value}</div>
 						</div>
-						<div class="rounded-[12px] ${toneClass} p-3 text-white">
+						<div class="rounded-xl ${toneClass} p-3">
 							<i data-lucide="${icon}" class="h-6 w-6"></i>
 						</div>
 					</div>
+					<div class="mt-3 flex items-center justify-between gap-3 border-t border-[rgb(var(--border))] pt-3 text-xs"><span class="font-medium text-slate-600 dark:text-slate-300">${note}</span><strong class="whitespace-nowrap ${tone === 'danger' ? 'text-red-600' : tone === 'warning' ? 'text-amber-600' : tone === 'safe' ? 'text-emerald-600' : 'text-brand-600'}">${delta}</strong></div>
 				</div>
 			`;
 		}
 
 		function statChip(label, value, tone) {
 			const tones = {
-				safe: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20',
-				warning: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20',
-				danger: 'bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20',
-				brand: 'bg-brand-50 text-brand-700 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:text-brand-300 dark:ring-brand-500/20',
+				safe: 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300',
+				warning: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300',
+				danger: 'border-red-200 bg-red-50 text-red-800 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300',
+				brand: 'border-brand-200 bg-brand-50 text-brand-800 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-300',
 			};
-			return `<div class="rounded-2xl px-3 py-2 text-sm font-semibold ${tones[tone] || tones.brand}"><span class="text-xs uppercase tracking-[0.16em] opacity-70">${label}</span><div class="mt-1 text-base font-bold">${value}</div></div>`;
+			return `<div class="rounded-xl border px-4 py-3 ${tones[tone] || tones.brand}"><span class="text-xs font-semibold">${label}</span><div class="mt-1 text-xl font-extrabold">${value}</div></div>`;
 		}
 
 		function renderOverview() {
 			if (patients.length === 0) {
 				return `
-					<div class="flex min-h-[60vh] flex-col items-center justify-center gap-6 ">
-						<div class="flex h-24 w-24 items-center justify-center rounded-[24px] bg-brand-600 text-white">
-							<i data-lucide="scan-line" class="h-12 w-12"></i>
+					<div class="card flex min-h-[58vh] flex-col items-center justify-center gap-5 px-6 py-12 text-center">
+						<div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+							<i data-lucide="scan-line" class="h-8 w-8"></i>
 						</div>
-						<div class="text-center">
-							<div class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Hệ thống trực tuyến</div>
-							<div class="mt-3 max-w-md text-base leading-7 text-slate-500 dark:text-slate-400">Thiết bị sẵn sàng. Vui lòng quẹt thẻ RFID trên mạch ESP32 để khởi tạo trạm giám sát bệnh nhân.</div>
+						<div>
+							<h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Chưa có bệnh nhân</h2>
+							<p class="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">Hệ thống đã sẵn sàng. Quẹt thẻ RFID tại trạm ESP32 để bắt đầu theo dõi.</p>
 						</div>
-						<div class="flex flex-wrap items-center justify-center gap-3">
-							<div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-								<i data-lucide="check-circle-2" class="h-4 w-4"></i>WebSocket ${state.mqttStatus === 'connected' ? 'Đã kết nối' : 'Đang kết nối...'}
-							</div>
-							<div class="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-300">
-								<i data-lucide="wifi" class="h-4 w-4"></i>${state.wifiStatus === 'stable' ? 'Wi-Fi ổn định' : 'Wi-Fi yếu'}
-							</div>
+						<div class="ui-badge ${state.mqttStatus === 'connected' ? 'ui-badge-safe' : 'ui-badge-warning'}">
+							<i data-lucide="${state.mqttStatus === 'connected' ? 'check-circle-2' : 'loader-circle'}" class="h-4 w-4"></i>${state.mqttStatus === 'connected' ? 'Hệ thống đã kết nối' : 'Đang kết nối lại'}
 						</div>
 					</div>
 				`;
 			}
-			const safeCount = patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length;
-			const warningCount = patients.filter((patient) => isTransitionFirmwareStatus(patient.status)).length;
-			const dangerCount = patients.filter((patient) => isCriticalFirmwareStatus(patient.status)).length;
-			const fallCount = patients.filter((patient) => isCriticalFirmwareStatus(patient.status) || patient.fall).length;
-			const measuredPatients = patients.filter(hasMeasurementData);
-			const avgHeart = measuredPatients.length ? Math.round(measuredPatients.reduce((sum, patient) => sum + patient.heartRate, 0) / measuredPatients.length) : 0;
-			const avgTemp = measuredPatients.length ? (measuredPatients.reduce((sum, patient) => sum + patient.temp, 0) / measuredPatients.length).toFixed(1) : '0.0';
-			const avgSpO2 = measuredPatients.length ? Math.round(measuredPatients.reduce((sum, patient) => sum + patient.spo2, 0) / measuredPatients.length) : 0;
-			const heartSeries = measuredPatients.length
-				? measuredPatients.reduce((acc, p) => p.history?.heartRate?.forEach((v, i) => { acc[i] = (acc[i] || 0) + v / measuredPatients.length; }) || acc, Array(18).fill(0)).map(Math.round)
-				: Array(18).fill(0);
-			const tempSeries = measuredPatients.length
-				? measuredPatients.reduce((acc, p) => p.history?.temp?.forEach((v, i) => { acc[i] = (acc[i] || 0) + v / measuredPatients.length; }) || acc, Array(18).fill(0)).map(v => Number(v.toFixed(1)))
-				: Array(18).fill(0);
-			const alertPatients = patients.filter((patient) => !isNormalFirmwareStatus(patient.status)).slice(0, 4);
-			const criticalItems = [
-				{ label: 'MQTT', value: state.mqttStatus === 'connected' ? 'Connected' : 'Degraded', tone: state.mqttStatus === 'connected' ? 'safe' : 'warning' },
-				{ label: 'Wi-Fi', value: state.wifiStatus === 'stable' ? 'Stable' : 'Unstable', tone: state.wifiStatus === 'stable' ? 'safe' : 'warning' },
-				{ label: 'Kiosk', value: state.kioskStatus === 'online' ? 'Online' : 'Warning', tone: state.kioskStatus === 'online' ? 'safe' : 'warning' },
-				{ label: 'Firmware status', value: `${patients.filter((patient) => !isNormalFirmwareStatus(patient.status)).length} active`, tone: dangerCount ? 'danger' : 'brand' },
-			];
+			const attentionPatients = patients
+				.filter((patient) => !isNormalFirmwareStatus(patient.status) || patient.signalLost || patient.alertLevel === 'danger' || patient.alertLevel === 'warning')
+				.sort((left, right) => (right.riskScore || 0) - (left.riskScore || 0));
+			const criticalPatients = attentionPatients.filter((patient) => isCriticalFirmwareStatus(patient.status) || patient.fall || patient.signalLost || patient.alertLevel === 'danger');
+			const offlineCount = patients.filter((patient) => patient.signalLost).length;
+			const safeCount = Math.max(0, patients.length - attentionPatients.length);
 
 			return `
-				<div class="space-y-6 ">
+				<div class="space-y-6">
+					${criticalPatients.length ? `
+						<section class="ui-alert flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5" aria-label="Cảnh báo y tế khẩn cấp">
+							<div class="flex items-start gap-3">
+								<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white"><i data-lucide="triangle-alert" class="h-5 w-5"></i></div>
+								<div><div class="font-bold text-red-700 dark:text-red-300">${criticalPatients.length} cảnh báo cần xử lý ngay</div><div class="mt-1 text-sm text-slate-600 dark:text-slate-300">${escapeHtml(criticalPatients[0].name)} · ${firmwareStatusLabel(criticalPatients[0].status)}${criticalPatients.length > 1 ? ` và ${criticalPatients.length - 1} bệnh nhân khác` : ''}</div></div>
+							</div>
+							<button data-action="open-patient" data-id="${criticalPatients[0].id}" class="ui-btn ui-btn-primary shrink-0 !border-red-600 !bg-red-600 hover:!bg-red-700"><i data-lucide="arrow-right" class="h-4 w-4"></i>Xem bệnh nhân</button>
+						</section>
+					` : ''}
+
 					<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-						${metricCard('Tổng bệnh nhân', patients.length, '+ realtime', 'users-round', 'brand', 'Đang theo dõi trực tiếp')}
-						${metricCard('Bệnh nhân an toàn', safeCount, `${safeCount >= 12 ? '+' : ''}${safeCount - 12}`, 'shield-check', 'safe', 'Vùng an toàn / vitals ổn')}
-						${metricCard('Cảnh báo đang hoạt động', warningCount + dangerCount, dangerCount ? `${dangerCount} nguy hiểm` : 'Giám sát', 'triangle-alert', dangerCount ? 'danger' : 'warning', 'Té ngã, SpO₂ thấp, mất tín hiệu')}
-						${metricCard('Té ngã hôm nay', fallCount, `${fallCount > 0 ? '+' : ''}${fallCount}`, 'person-standing', fallCount > 0 ? 'danger' : 'warning', 'Phát hiện từ wearable/kiosk')}
+						${metricCard('Đang theo dõi', patients.length, 'Realtime', 'users-round', 'brand', 'Tổng bệnh nhân')}
+						${metricCard('Ổn định', safeCount, safeCount === patients.length ? 'Tất cả an toàn' : `${safeCount}/${patients.length}`, 'shield-check', 'safe', 'Không có cảnh báo')}
+						${metricCard('Cần chú ý', attentionPatients.length, criticalPatients.length ? `${criticalPatients.length} khẩn cấp` : 'Theo dõi', 'triangle-alert', criticalPatients.length ? 'danger' : 'warning', 'Cảnh báo đang hoạt động')}
+						${metricCard('Mất kết nối', offlineCount, offlineCount ? 'Kiểm tra thiết bị' : 'Không có', 'wifi-off', offlineCount ? 'danger' : 'safe', 'Thiết bị ngoại tuyến')}
 					</section>
 
-					<section class="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
-						<div class="space-y-6">
-							<div class="grid gap-4 lg:grid-cols-2">
-								${chartCard('Nhịp tim trung bình', heartSeries, 'bpm', 'text-brand-600 dark:text-brand-300', `AVG ${avgHeart} bpm`)}
-								${chartCard('Nhiệt độ cơ thể', tempSeries, '°C', 'text-emerald-600 dark:text-emerald-300', `AVG ${avgTemp} °C`)}
+					<section>
+						<div class="card overflow-hidden">
+							<div class="flex items-center justify-between gap-4 border-b border-[rgb(var(--border))] px-5 py-4 sm:px-6">
+								<div><h2 class="text-lg font-bold text-slate-900 dark:text-white">Bệnh nhân cần chú ý</h2><p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Ưu tiên theo điểm rủi ro và cảnh báo thiết bị</p></div>
+								<button data-action="switch-view" data-view="patients" class="ui-btn ui-btn-secondary !min-h-9 !px-3 !py-2 text-sm">Xem tất cả<i data-lucide="arrow-right" class="h-4 w-4"></i></button>
 							</div>
-							<div class="card rounded-[16px] p-5 ">
-								<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-									<div>
-										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Overview snapshots</div>
-										<div class="mt-1 text-2xl font-bold tracking-tight">Realtime health status</div>
-									</div>
-									<div class="flex flex-wrap gap-2">
-										${statChip('SpO₂ average', `${avgSpO2}%`, avgSpO2 < 94 ? 'danger' : 'safe')}
-										${statChip('MQTT', state.mqttStatus, state.mqttStatus === 'connected' ? 'safe' : 'warning')}
-										${statChip('Wi-Fi', state.wifiStatus, state.wifiStatus === 'stable' ? 'safe' : 'warning')}
-									</div>
-								</div>
-								<div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-									${criticalItems.map((item) => `
-										<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
-											<div class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">${item.label}</div>
-											<div class="mt-2 text-lg font-bold ${item.tone === 'safe' ? 'text-emerald-600 dark:text-emerald-300' : item.tone === 'danger' ? 'text-red-600 dark:text-red-300' : 'text-slate-800 dark:text-slate-100'}">${item.value}</div>
-											<div class="mt-3">${progressBar(item.label === 'BLE' ? patients.filter((patient) => !patient.signalLost).length : item.tone === 'safe' ? 92 : 58, 100, item.tone === 'safe' ? 'safe' : item.tone === 'danger' ? 'danger' : 'warning')}</div>
-										</div>
-									`).join('')}
-								</div>
-							</div>
-						</div>
-
-						<div class="space-y-6">
-							<div class="card rounded-[16px] p-5 ">
-								<div class="flex items-center justify-between">
-									<div>
-										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">System status</div>
-										<div class="mt-1 text-xl font-bold">MQTT / Wi-Fi / Kiosk</div>
-									</div>
-									<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"><i data-lucide="check-circle-2" class="h-3.5 w-3.5"></i>Realtime</span>
-								</div>
-								<div class="mt-5 space-y-3">
-									${[
-										['MQTT Broker', state.mqttStatus, state.mqttStatus === 'connected' ? 96 : 61, state.mqttStatus === 'connected' ? 'safe' : 'warning'],
-										['Wi-Fi Core', state.wifiStatus, state.wifiStatus === 'stable' ? 94 : 58, state.wifiStatus === 'stable' ? 'safe' : 'warning'],
-										['Kiosk Fleet', state.kioskStatus, state.kioskStatus === 'online' ? 91 : 54, state.kioskStatus === 'online' ? 'safe' : 'warning'],
-									].map(([label, value, pct, tone]) => `
-										<div class="space-y-2 rounded-[12px] bg-slate-50 p-4 dark:bg-slate-950/50">
-											<div class="flex items-center justify-between text-sm font-semibold"><span>${label}</span><span class="capitalize ${tone === 'safe' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${value}</span></div>
-											${progressBar(Number(pct), 100, tone)}
-										</div>
-									`).join('')}
-								</div>
-							</div>
-
-							<div class="card rounded-[16px] p-5 ">
-								<div class="flex items-center justify-between">
-									<div>
-										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Danger pulse</div>
-										<div class="mt-1 text-xl font-bold">Cảnh báo nổi bật</div>
-									</div>
-									<div class="rounded-full bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 dark:bg-red-500/10 dark:text-red-300">${alertPatients.length} active</div>
-								</div>
-								<div class="mt-4 space-y-3">
-									${alertPatients.length ? alertPatients.map((patient) => `
-										<button data-action="open-patient" data-id="${patient.id}" class="w-full rounded-[16px] border border-red-200 bg-red-50/80 p-4 text-left transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:hover:bg-red-500/15">
-											<div class="flex items-center justify-between gap-3">
-												<div class="flex items-center gap-3">
-													<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-white">${patient.avatar}</div>
-													<div>
-														<div class="font-bold">${patient.name}</div>
-														<div class="text-sm text-slate-500 dark:text-slate-300">${patient.kiosk} · ${patient.room}</div>
-													</div>
-												</div>
-												<span class="rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white ${isCriticalFirmwareStatus(patient.status) || patient.fall || patient.signalLost ? 'pulse-critical' : ''}">${firmwareStatusLabel(patient.status)}</span>
-											</div>
-											<div class="mt-4 grid grid-cols-3 gap-2 text-sm">
-												<div class="rounded-2xl bg-white/80 p-2 text-center dark:bg-slate-950/60"><div class="text-[11px] text-slate-400">HR</div><div class="font-bold text-slate-900 dark:text-white">${patient.heartRate}</div></div>
-												<div class="rounded-2xl bg-white/80 p-2 text-center dark:bg-slate-950/60"><div class="text-[11px] text-slate-400">SpO₂</div><div class="font-bold text-slate-900 dark:text-white">${patient.spo2}%</div></div>
-												<div class="rounded-2xl bg-white/80 p-2 text-center dark:bg-slate-950/60"><div class="text-[11px] text-slate-400">Temp</div><div class="font-bold text-slate-900 dark:text-white">${patient.temp}°</div></div>
-											</div>
-										</button>
-									`).join('') : '<div class="rounded-[16px] bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-950/60 dark:text-slate-400">Không có cảnh báo nguy hiểm hiện tại</div>'}
-								</div>
+							<div class="divide-y divide-[rgb(var(--border))]">
+								${attentionPatients.slice(0, 5).map((patient) => `
+									<button data-action="open-patient" data-id="${patient.id}" class="flex w-full items-center gap-3 px-5 py-4 text-left transition hover:bg-brand-50/70 dark:hover:bg-slate-800 sm:px-6">
+										<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${criticalPatients.includes(patient) ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'} text-sm font-bold">${escapeHtml(patient.avatar)}</div>
+										<div class="min-w-0 flex-1"><div class="truncate font-bold text-slate-900 dark:text-white">${escapeHtml(patient.name)}</div><div class="mt-1 truncate text-sm font-semibold text-slate-700 dark:text-slate-200">${escapeHtml(patient.room)} · ${firmwareStatusLabel(patient.status)}</div></div>
+										<div class="hidden items-center gap-5 text-right sm:flex"><div><div class="text-xs font-medium text-slate-600 dark:text-slate-300">Nhịp tim</div><div class="font-bold text-slate-800 dark:text-slate-100">${vitalText(patient, 'heartRate', ' bpm')}</div></div><div><div class="text-xs font-medium text-slate-600 dark:text-slate-300">SpO₂</div><div class="font-bold text-slate-800 dark:text-slate-100">${vitalText(patient, 'spo2', '%')}</div></div></div>
+										<span class="ui-badge ${criticalPatients.includes(patient) ? 'ui-badge-danger' : 'ui-badge-warning'}">${criticalPatients.includes(patient) ? 'Khẩn cấp' : 'Theo dõi'}</span>
+										<i data-lucide="chevron-right" class="h-4 w-4 shrink-0 text-slate-400"></i>
+									</button>
+								`).join('') || '<div class="flex flex-col items-center px-6 py-10 text-center"><div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><i data-lucide="shield-check" class="h-6 w-6"></i></div><div class="mt-3 font-bold text-slate-900 dark:text-white">Không có cảnh báo</div><div class="mt-1 text-sm text-slate-600 dark:text-slate-300">Tất cả bệnh nhân đang ổn định.</div></div>'}
 							</div>
 						</div>
 					</section>
@@ -771,11 +999,11 @@
 		function renderPatients() {
 			if (patients.length === 0) {
 				return `
-					<div class="flex min-h-[50vh] flex-col items-center justify-center gap-5 ">
-						<div class="flex h-20 w-20 items-center justify-center rounded-[16px] bg-slate-100 text-slate-400 dark:bg-slate-900"><i data-lucide="users" class="h-10 w-10"></i></div>
+					<div class="card flex min-h-[52vh] flex-col items-center justify-center gap-5 px-6 text-center">
+						<div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i data-lucide="users" class="h-8 w-8"></i></div>
 						<div class="text-center">
 							<div class="text-2xl font-bold text-slate-900 dark:text-white">Chưa có bệnh nhân nào</div>
-							<div class="mt-2 text-base text-slate-500 dark:text-slate-400">Hệ thống đang chờ tín hiệu RFID từ thiết bị ESP32.</div>
+							<div class="mt-2 text-sm text-slate-600 dark:text-slate-300">Hệ thống đang chờ tín hiệu RFID từ thiết bị ESP32.</div>
 						</div>
 					</div>
 				`;
@@ -786,40 +1014,40 @@
 			const pageItems = visible.slice((page - 1) * state.pageSize, page * state.pageSize);
 			const summary = {
 				all: patients.length,
-				safe: patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length,
+				safe: patients.filter((patient) => isNormalFirmwareStatus(patient.status) && !patient.signalLost).length,
 				warning: patients.filter((patient) => isTransitionFirmwareStatus(patient.status)).length,
-				danger: patients.filter((patient) => isCriticalFirmwareStatus(patient.status)).length,
+				danger: patients.filter((patient) => isCriticalFirmwareStatus(patient.status) || patient.signalLost).length,
 			};
 			return `
-				<div class="space-y-6 ">
-					<div class="card rounded-[16px] p-5 ">
-						<div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+				<div class="space-y-5">
+					<section class="card p-5 sm:p-6">
+						<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 							<div>
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Danh sách bệnh nhân</div>
-								<div class="mt-1 text-2xl font-bold tracking-tight">Quản lý theo dõi, tìm nhanh và lọc trạng thái</div>
+								<h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Danh sách theo dõi</h2>
+								<p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Tìm bệnh nhân hoặc lọc theo trạng thái thiết bị.</p>
 							</div>
-							<div class="flex flex-wrap items-center gap-3">
-								<button data-action="export-pdf" class="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white  transition  dark:bg-white dark:text-slate-950">Export PDF report</button>
-								<button data-action="open-toast" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Toast demo</button>
+							<div class="flex flex-wrap gap-2">
+								<button data-action="open-toast" class="ui-btn ui-btn-secondary text-sm"><i data-lucide="refresh-cw" class="h-4 w-4"></i>Kiểm tra đồng bộ</button>
+								<button data-action="export-pdf" class="ui-btn ui-btn-primary text-sm"><i data-lucide="file-down" class="h-4 w-4"></i>Xuất báo cáo</button>
 							</div>
 						</div>
-						<div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-							${statChip('Tổng', summary.all, 'brand')}
-							${statChip('An toàn', summary.safe, 'safe')}
-							${statChip('Đang ngã / chuyển trạng thái', summary.warning, 'warning')}
-							${statChip('Té ngã xác nhận', summary.danger, 'danger')}
+						<div class="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+							${statChip('Tổng bệnh nhân', summary.all, 'brand')}
+							${statChip('Ổn định', summary.safe, 'safe')}
+							${statChip('Cần theo dõi', summary.warning, 'warning')}
+							${statChip('Khẩn cấp / mất tín hiệu', summary.danger, 'danger')}
 						</div>
-					</div>
+					</section>
 
-					<div class="card rounded-[16px] p-4 ">
-						<div class="grid gap-3 lg:grid-cols-[1.5fr_0.9fr_0.9fr_0.9fr]">
+					<section class="card p-4 sm:p-5">
+						<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.5fr_0.9fr_0.9fr_0.7fr]">
 							<label class="block">
-								<span class="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Search</span>
-								<input data-bind="search" value="${escapeHtml(state.search)}" placeholder="Tên, RFID, phòng, kiosk..." class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15" />
+								<span class="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">Tìm kiếm</span>
+								<div class="relative"><i data-lucide="search" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"></i><input data-bind="search" value="${escapeHtml(state.search)}" placeholder="Tên, RFID, phòng..." class="w-full rounded-xl border border-[rgb(var(--border))] bg-white py-3 pl-10 pr-4 text-sm text-slate-800 outline-none placeholder:text-slate-500 focus:border-brand-500 dark:bg-slate-950 dark:text-slate-100" /></div>
 							</label>
 							<label class="block">
-								<span class="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Filter</span>
-								<select data-bind="filter" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15">
+								<span class="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">Trạng thái</span>
+								<select data-bind="filter" class="w-full rounded-xl border border-[rgb(var(--border))] bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none focus:border-brand-500 dark:bg-slate-950 dark:text-slate-100">
 									<option value="all" ${state.filter === 'all' ? 'selected' : ''}>Tất cả</option>
 									<option value="IDLE" ${state.filter === 'IDLE' ? 'selected' : ''}>Bình thường</option>
 									<option value="FALLING" ${state.filter === 'FALLING' ? 'selected' : ''}>Đang ngã</option>
@@ -829,8 +1057,8 @@
 								</select>
 							</label>
 							<label class="block">
-								<span class="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Sort</span>
-								<select data-bind="sort" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15">
+								<span class="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">Sắp xếp</span>
+								<select data-bind="sort" class="w-full rounded-xl border border-[rgb(var(--border))] bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none focus:border-brand-500 dark:bg-slate-950 dark:text-slate-100">
 									<option value="risk" ${state.sort === 'risk' ? 'selected' : ''}>Rủi ro cao</option>
 									<option value="heartRate" ${state.sort === 'heartRate' ? 'selected' : ''}>Nhịp tim</option>
 									<option value="name" ${state.sort === 'name' ? 'selected' : ''}>Tên</option>
@@ -838,65 +1066,68 @@
 								</select>
 							</label>
 							<label class="block">
-								<span class="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Rows</span>
-								<select data-bind="pageSize" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950 dark:focus:ring-brand-500/15">
+								<span class="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">Số dòng</span>
+								<select data-bind="pageSize" class="w-full rounded-xl border border-[rgb(var(--border))] bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none focus:border-brand-500 dark:bg-slate-950 dark:text-slate-100">
 									<option value="5" ${state.pageSize === 5 ? 'selected' : ''}>5</option>
 									<option value="8" ${state.pageSize === 8 ? 'selected' : ''}>8</option>
 									<option value="12" ${state.pageSize === 12 ? 'selected' : ''}>12</option>
 								</select>
 							</label>
 						</div>
-					</div>
+					</section>
 
-					<div class="card overflow-hidden rounded-[16px] ">
-						<div class="overflow-x-auto table-scroll">
-							<table class="min-w-full text-left">
-								<thead class="sticky top-0 z-10 bg-slate-50/90 text-xs uppercase tracking-[0.18em] text-slate-400 dark:bg-slate-950/80">
+					<section class="card overflow-hidden">
+						<div class="hidden overflow-x-auto table-scroll md:block">
+							<table class="ui-table min-w-[920px]">
+								<thead>
 									<tr>
-										${['Patient', 'RFID', 'HR', 'SpO₂', 'Temp', 'Status', 'Battery', 'Fall', 'Updated'].map((head) => `<th class="px-5 py-4 font-bold">${head}</th>`).join('')}
+										<th>Bệnh nhân</th><th class="hidden xl:table-cell">RFID</th><th>Nhịp tim</th><th>SpO₂</th><th>Nhiệt độ</th><th>Trạng thái</th><th class="hidden lg:table-cell">Pin</th><th class="hidden xl:table-cell">Té ngã</th><th>Cập nhật</th>
 									</tr>
 								</thead>
-								<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+								<tbody>
 									${pageItems.map((patient) => `
-										<tr class="group transition hover:bg-slate-50/70 dark:hover:bg-slate-950/50">
-											<td class="px-5 py-4">
+										<tr class="group transition dark:hover:bg-slate-800">
+											<td>
 												<button data-action="open-patient" data-id="${patient.id}" class="flex items-center gap-3 text-left">
-													<div class="flex h-12 w-12 items-center justify-center rounded-[12px] bg-brand-600 text-sm font-bold text-white">${patient.avatar}</div>
+													<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-xs font-bold text-white">${escapeHtml(patient.avatar)}</div>
 													<div>
-														<div class="font-bold">${patient.name}</div>
-														<div class="text-xs text-slate-500 dark:text-slate-400">${patient.room} · ${patient.age}y · ${patient.kiosk}</div>
+														<div class="font-bold text-slate-900 dark:text-white">${escapeHtml(patient.name)}</div>
+												<div class="mt-1 text-sm font-semibold leading-5 text-slate-700 dark:text-slate-200">${escapeHtml(patient.room)}${patient.bed ? ` · Giường ${escapeHtml(patient.bed)}` : ''}${patient.age ? ` · ${patient.age} tuổi` : ''}</div>
 													</div>
 												</button>
 											</td>
-											<td class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">${patient.id}</td>
-											<td class="px-5 py-4"><span class="rounded-full ${hasMeasurementData(patient) && (patient.heartRate > 110 || patient.heartRate < 55) ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'} px-3 py-1 text-sm font-bold">${vitalText(patient, 'heartRate')}</span></td>
-											<td class="px-5 py-4"><span class="rounded-full ${hasMeasurementData(patient) && patient.spo2 < 94 ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'} px-3 py-1 text-sm font-bold">${vitalText(patient, 'spo2', '%')}</span></td>
-											<td class="px-5 py-4 font-bold ${hasMeasurementData(patient) && patient.temp > 37.6 ? 'text-red-600 dark:text-red-300' : 'text-slate-700 dark:text-slate-200'}">${vitalText(patient, 'temp', '°C')}</td>
-											<td class="px-5 py-4">${statusBadge(patient.status)}</td>
-											<td class="px-5 py-4">
+											<td class="hidden font-semibold text-slate-700 dark:text-slate-200 xl:table-cell">${escapeHtml(patient.id)}</td>
+											<td><span class="font-bold ${hasMeasurementData(patient) && (patient.heartRate > 110 || patient.heartRate < 55) ? 'text-red-600 dark:text-red-300' : 'text-slate-900 dark:text-white'}">${vitalText(patient, 'heartRate')}</span><span class="ml-1 text-xs font-medium text-slate-600">bpm</span></td>
+											<td><span class="font-bold ${hasMeasurementData(patient) && patient.spo2 < 94 ? 'text-red-600 dark:text-red-300' : 'text-slate-900 dark:text-white'}">${vitalText(patient, 'spo2', '%')}</span></td>
+											<td class="font-bold ${hasMeasurementData(patient) && patient.temp > 37.6 ? 'text-red-600 dark:text-red-300' : 'text-slate-900 dark:text-white'}">${vitalText(patient, 'temp', '°C')}</td>
+											<td>${statusBadge(patient.status)}${patient.signalLost ? '<div class="mt-1 text-xs font-bold text-red-600">Mất tín hiệu</div>' : ''}<div class="mt-1 text-xs font-medium text-slate-600 dark:text-slate-300">Rủi ro ${patient.riskScore || 0}/100</div></td>
+											<td class="hidden lg:table-cell">
 												<div class="w-24">${hasMeasurementData(patient) ? progressBar(patient.battery, 100, patient.battery < 20 ? 'danger' : patient.battery < 45 ? 'warning' : 'safe') : progressBar(0, 100, 'warning')}</div>
-												<div class="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">${vitalText(patient, 'battery', '%')}</div>
+												<div class="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">${vitalText(patient, 'battery', '%')}</div>
 											</td>
-											<td class="px-5 py-4">
+											<td class="hidden xl:table-cell">
 												<div class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ${patient.fall ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'}">
 													<span class="h-1.5 w-1.5 rounded-full bg-current"></span>${patient.fall ? 'FALL' : 'No'}
 												</div>
 											</td>
-											<td class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">${formatDateTimeFull(latestMeasurementDate(patient))}</td>
+											<td class="text-sm font-medium text-slate-600 dark:text-slate-300">${formatDateTimeFull(latestMeasurementDate(patient))}</td>
 										</tr>
-									`).join('')}
+									`).join('') || '<tr><td colspan="9" class="py-12 text-center text-slate-600">Không tìm thấy bệnh nhân phù hợp.</td></tr>'}
 								</tbody>
 							</table>
 						</div>
-						<div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-							<div class="text-sm text-slate-500 dark:text-slate-400">Hiển thị ${Math.min((page - 1) * state.pageSize + 1, visible.length)}-${Math.min(page * state.pageSize, visible.length)} của ${visible.length} bệnh nhân</div>
+						<div class="divide-y divide-[rgb(var(--border))] md:hidden">
+							${pageItems.map((patient) => `<button data-action="open-patient" data-id="${patient.id}" class="block w-full p-4 text-left hover:bg-brand-50/70 dark:hover:bg-slate-800"><div class="flex items-center gap-3"><div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-xs font-bold text-white">${escapeHtml(patient.avatar)}</div><div class="min-w-0 flex-1"><div class="truncate font-bold text-slate-900 dark:text-white">${escapeHtml(patient.name)}</div><div class="mt-1 truncate text-sm font-semibold text-slate-700 dark:text-slate-200">${escapeHtml(patient.room || '---')} · ${escapeHtml(patient.id)}</div></div>${statusBadge(patient.status)}<i data-lucide="chevron-right" class="h-4 w-4 shrink-0 text-slate-500"></i></div><div class="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-[rgb(var(--panel-2))] p-3 text-center"><div><div class="text-xs font-medium text-slate-600">Nhịp tim</div><div class="mt-1 font-bold text-slate-900 dark:text-white">${vitalText(patient, 'heartRate')}</div></div><div><div class="text-xs font-medium text-slate-600">SpO₂</div><div class="mt-1 font-bold ${hasMeasurementData(patient) && patient.spo2 < 94 ? 'text-red-600' : 'text-slate-900 dark:text-white'}">${vitalText(patient, 'spo2', '%')}</div></div><div><div class="text-xs font-medium text-slate-600">Nhiệt độ</div><div class="mt-1 font-bold text-slate-900 dark:text-white">${vitalText(patient, 'temp', '°')}</div></div></div></button>`).join('') || '<div class="p-10 text-center text-sm text-slate-600">Không tìm thấy bệnh nhân phù hợp.</div>'}
+						</div>
+						<div class="flex flex-col gap-3 border-t border-[rgb(var(--border))] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+							<div class="text-sm font-medium text-slate-600 dark:text-slate-300">Hiển thị ${Math.min((page - 1) * state.pageSize + 1, visible.length)}–${Math.min(page * state.pageSize, visible.length)} trong ${visible.length} bệnh nhân</div>
 							<div class="flex items-center gap-2">
-								<button data-action="paginate" data-page="${Math.max(1, page - 1)}" class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200" ${page === 1 ? 'disabled' : ''}>Trước</button>
-								<div class="rounded-2xl bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-200">${page} / ${totalPages}</div>
-								<button data-action="paginate" data-page="${Math.min(totalPages, page + 1)}" class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200" ${page === totalPages ? 'disabled' : ''}>Sau</button>
+								<button data-action="paginate" data-page="${Math.max(1, page - 1)}" class="ui-btn ui-btn-secondary !min-h-9 !px-3 !py-2 text-sm disabled:opacity-40" ${page === 1 ? 'disabled' : ''}>Trước</button>
+								<div class="rounded-lg bg-[rgb(var(--panel-2))] px-3 py-2 text-sm font-bold text-slate-700 dark:text-slate-200">${page}/${totalPages}</div>
+								<button data-action="paginate" data-page="${Math.min(totalPages, page + 1)}" class="ui-btn ui-btn-secondary !min-h-9 !px-3 !py-2 text-sm disabled:opacity-40" ${page === totalPages ? 'disabled' : ''}>Sau</button>
 							</div>
 						</div>
-					</div>
+					</section>
 				</div>
 			`;
 		}
@@ -904,27 +1135,23 @@
 		function renderPatientDetail() {
 			const patient = currentPatient();
 			if (!patient) return `<div class="card rounded-[16px] p-6 ">Không có bệnh nhân được chọn.</div>`;
-			const heartSeries = patient.history?.heartRate || [];
-			const spo2Series = patient.history?.spo2 || [];
-			const tempSeries = patient.history?.temp || [];
 			return `
-				<div class="space-y-6 ">
-					<div class="card rounded-[16px] p-5 ">
+				<div class="space-y-5">
+					<div class="card p-5 sm:p-6">
 						<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 							<div class="flex items-center gap-4">
-								<div class="flex h-16 w-16 items-center justify-center rounded-[16px] bg-brand-600 text-xl font-bold text-white">${patient.avatar}</div>
+								<div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-lg font-bold text-white">${escapeHtml(patient.avatar)}</div>
 								<div>
-									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Trang chi tiết bệnh nhân</div>
-									<div class="mt-1 text-3xl font-bold tracking-tight">${patient.name}</div>
-									<div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-										<span>${patient.id}</span><span>•</span><span>${patient.room}</span><span>•</span><span>${patient.age} tuổi</span><span>•</span><span>${patient.kiosk}</span>
+									<div class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">${escapeHtml(patient.name)}</div>
+									<div class="mt-2 flex flex-wrap items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+										<span>${escapeHtml(patient.id)}</span><span>•</span><span>${escapeHtml(patient.room)}</span>${patient.bed ? `<span>•</span><span>Giường ${escapeHtml(patient.bed)}</span>` : ''}${patient.age ? `<span>•</span><span>${patient.age} tuổi</span>` : ''}
 									</div>
 								</div>
 							</div>
-							<div class="flex flex-wrap gap-2">
+							<div class="flex flex-wrap items-center gap-2">
 								${statusBadge(patient.status)}
-								<button data-action="simulate-alert" class="rounded-2xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white  transition ">Trigger alert</button>
-								<button data-action="open-toast" class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Toast</button>
+								<button data-action="switch-view" data-view="patients" class="ui-btn ui-btn-secondary text-sm"><i data-lucide="arrow-left" class="h-4 w-4"></i>Danh sách</button>
+								<button data-action="switch-view" data-view="history" class="ui-btn ui-btn-primary text-sm"><i data-lucide="chart-no-axes-combined" class="h-4 w-4"></i>Xem lịch sử</button>
 							</div>
 						</div>
 					</div>
@@ -938,83 +1165,39 @@
 									['Temperature', vitalText(patient, 'temp', '°C'), hasMeasurementData(patient) && patient.temp > 37.6 ? 'danger' : 'safe'],
 									['Battery', vitalText(patient, 'battery', '%'), hasMeasurementData(patient) && patient.battery < 20 ? 'danger' : hasMeasurementData(patient) && patient.battery < 45 ? 'warning' : 'safe'],
 								].map(([label, value, tone]) => `
-									<div class="card rounded-[16px] p-4 ">
-										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${label}</div>
+									<div class="card p-4">
+										<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">${label === 'Heart rate' ? 'Nhịp tim' : label === 'Temperature' ? 'Nhiệt độ' : label === 'Battery' ? 'Pin thiết bị' : label}</div>
 										<div class="mt-2 text-3xl font-bold ${tone === 'danger' ? 'text-red-600 dark:text-red-300' : tone === 'warning' ? 'text-amber-600 dark:text-amber-300' : tone === 'safe' ? 'text-emerald-600 dark:text-emerald-300' : 'text-brand-600 dark:text-brand-300'}">${value}</div>
 										<div class="mt-3">${progressBar(!hasMeasurementData(patient) ? 0 : label === 'Battery' ? patient.battery : label === 'SpO₂' ? patient.spo2 : label === 'Temperature' ? Math.round((patient.temp / 40) * 100) : clamp(patient.heartRate, 0, 150), label === 'Temperature' ? 100 : label === 'Heart rate' ? 150 : 100, tone === 'danger' ? 'danger' : tone === 'warning' ? 'warning' : 'safe')}</div>
 									</div>
 								`).join('')}
 							</div>
-							<div class="grid gap-4 lg:grid-cols-3">
-								${chartCard('Heart rate realtime', heartSeries, 'bpm', 'text-brand-600 dark:text-brand-300', 'Live stream')}
-								${chartCard('SpO₂ realtime', spo2Series, '%', 'text-emerald-600 dark:text-emerald-300', 'Oxygen saturation')}
-								${chartCard('Body temperature', tempSeries, '°C', 'text-amber-600 dark:text-amber-300', 'Body temp')}
-							</div>
-							<div class="card rounded-[16px] p-5 ">
-								<div class="flex items-center justify-between">
-									<div>
-										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Medical timeline</div>
-										<div class="mt-1 text-2xl font-bold tracking-tight">Lịch sử check-in / check-out & cảnh báo</div>
-									</div>
-									<button data-action="export-pdf" class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">PDF report</button>
-								</div>
-								<div class="mt-5 space-y-4">
-									${(patient.checkins || []).map((entry) => `
-										<div class="flex gap-4 rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
-											<div class="mt-1 h-3 w-3 rounded-full ${entry.type === 'Check-in' ? 'bg-emerald-500' : entry.type === 'Medication' ? 'bg-brand-500' : 'bg-amber-500'}"></div>
-											<div class="flex-1">
-												<div class="flex items-center justify-between gap-3">
-													<div class="font-bold">${entry.type}</div>
-													<div class="text-sm text-slate-500 dark:text-slate-400">${formatDateTime(entry.time)}</div>
-												</div>
-												<div class="mt-1 text-sm text-slate-500 dark:text-slate-400">${entry.place}</div>
-											</div>
-										</div>
-									`).join('')}
-								</div>
-							</div>
 						</div>
 						<div class="space-y-6">
-							<div class="card rounded-[16px] p-5 ">
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Patient profile</div>
-								<div class="mt-1 text-2xl font-bold tracking-tight">Hồ sơ và thiết bị</div>
+							<div class="card p-5 sm:p-6">
+								<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Thông tin bệnh nhân</div>
+								<div class="mt-1 text-xl font-bold tracking-tight text-slate-900 dark:text-white">Hồ sơ và thiết bị</div>
+								<div class="mt-5 grid gap-3 sm:grid-cols-2">
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Giới tính</div><div class="mt-1 font-bold text-slate-900 dark:text-white">${escapeHtml(patient.gender || 'Chưa cập nhật')}</div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Tình trạng</div><div class="mt-1 font-bold text-slate-900 dark:text-white">${escapeHtml(patient.condition_summary || 'Chưa cập nhật')}</div></div>
+								</div>
 								<div class="mt-5 grid gap-4 sm:grid-cols-2">
-									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">BLE</div><div class="mt-2 text-lg font-bold ${patient.signalLost ? 'text-red-600 dark:text-red-300' : 'text-emerald-600 dark:text-emerald-300'}">${patient.ble}</div></div>
-									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">RSSI</div><div class="mt-2 text-lg font-bold text-slate-900 dark:text-white">${vitalText(patient, 'rssi', ' dBm')}</div></div>
-									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Wearable battery</div><div class="mt-2 text-lg font-bold text-slate-900 dark:text-white">${vitalText(patient, 'battery', '%')}</div></div>
-									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Last measurement</div><div class="mt-2 text-lg font-bold text-slate-900 dark:text-white">${formatDateTimeFull(latestMeasurementDate(patient))}</div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Kết nối BLE</div><div class="mt-2 font-bold ${patient.signalLost ? 'text-red-600 dark:text-red-300' : 'text-emerald-700 dark:text-emerald-300'}">${escapeHtml(patient.ble)}</div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Cường độ tín hiệu</div><div class="mt-2 font-bold text-slate-900 dark:text-white">${vitalText(patient, 'rssi', ' dBm')}</div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Pin thiết bị</div><div class="mt-2 font-bold text-slate-900 dark:text-white">${vitalText(patient, 'battery', '%')}</div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Lần đo gần nhất</div><div class="mt-2 text-sm font-bold text-slate-900 dark:text-white">${formatDateTimeFull(latestMeasurementDate(patient))}</div></div>
 								</div>
 								<div class="mt-5 rounded-[16px] border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/50">
-									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Risk score</div>
+									<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Điểm rủi ro</div>
 									<div class="mt-2 flex items-end justify-between gap-3">
 										<div class="text-4xl font-bold ${patient.riskScore > 75 ? 'text-red-600 dark:text-red-300' : patient.riskScore > 45 ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}">${patient.riskScore}</div>
 										<div class="w-40">${progressBar(patient.riskScore, 100, patient.riskScore > 75 ? 'danger' : patient.riskScore > 45 ? 'warning' : 'safe')}</div>
 									</div>
 								</div>
-							</div>
-
-							<div class="card rounded-[16px] p-5 ">
-								<div class="flex items-center justify-between">
-									<div>
-										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Alert timeline</div>
-										<div class="mt-1 text-2xl font-bold tracking-tight">Medical history feed</div>
-									</div>
-									<span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 dark:bg-slate-900 dark:text-slate-300">${(patient.timeline || []).length} events</span>
-								</div>
-								<div class="mt-5 space-y-3">
-									${(patient.timeline || []).map((item) => `
-										<div class="flex gap-4 rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
-											<div class="mt-1 h-10 w-10 rounded-2xl bg-white p-2 text-brand-600 shadow-sm dark:bg-slate-900 dark:text-brand-300"><i data-lucide="activity" class="h-6 w-6"></i></div>
-											<div class="flex-1">
-												<div class="flex items-center justify-between gap-3">
-													<div class="font-bold">${item.label}</div>
-													<div class="text-sm text-slate-500 dark:text-slate-400">${formatDateTime(item.time)}</div>
-												</div>
-												<div class="mt-1 text-sm text-slate-500 dark:text-slate-400">${item.note}</div>
-											</div>
-										</div>
-									`).join('')}
-								</div>
+								<details class="mt-5 border-t border-[rgb(var(--border))] pt-4">
+									<summary class="cursor-pointer text-sm font-semibold text-slate-600 dark:text-slate-300">Công cụ kiểm thử</summary>
+									<div class="mt-3 flex flex-wrap gap-2"><button data-action="simulate-alert" class="ui-btn ui-btn-secondary text-sm !text-red-600"><i data-lucide="triangle-alert" class="h-4 w-4"></i>Mô phỏng cảnh báo</button><button data-action="open-toast" class="ui-btn ui-btn-secondary text-sm"><i data-lucide="bell" class="h-4 w-4"></i>Kiểm tra thông báo</button></div>
+								</details>
 							</div>
 						</div>
 					</div>
@@ -1023,64 +1206,73 @@
 		}
 
 		function renderHistory() {
-			// Dùng lịch sử heartRate thật của tất cả bệnh nhân, nếu chưa có thì placeholder 0
-			const allHR = patients.flatMap(p => p.history?.heartRate || []);
-			const series = allHR.length >= 24
-				? allHR.slice(-24)
-				: [...Array(24 - allHR.length).fill(0), ...allHR];
+			const patient = currentPatient();
+			if (!patient) return `<div class="card p-6 text-slate-700 dark:text-slate-200">Không có bệnh nhân được chọn.</div>`;
+			const heartSeries = patient.history?.heartRate || [];
+			const spo2Series = patient.history?.spo2 || [];
+			const tempSeries = patient.history?.temp || [];
+			const average = (series, digits = 0) => series.length ? (series.reduce((sum, value) => sum + Number(value || 0), 0) / series.length).toFixed(digits) : '---';
+			const historyEvents = (patient.statusHistory || []).map((entry) => ({
+				label: firmwareStatusLabel(entry.status),
+				note: `Trạng thái firmware: ${normalizeFirmwareStatus(entry.status)}`,
+				time: new Date(entry.at),
+			}));
+			(patient.timeline || []).forEach((entry) => historyEvents.push({ ...entry, time: new Date(entry.time) }));
+			(patient.checkins || []).forEach((entry) => historyEvents.push({ label: entry.type, note: entry.place, time: new Date(entry.time) }));
+			historyEvents.sort((left, right) => new Date(left.time) - new Date(right.time));
 			return `
-				<div class="space-y-6 ">
-					<div class="card rounded-[16px] p-5 ">
+				<div class="space-y-5">
+					<div class="card p-5 sm:p-6">
 						<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 							<div>
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Lịch sử dữ liệu</div>
-								<div class="mt-1 text-2xl font-bold tracking-tight">Heatmap, trend và audit trail</div>
+								<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">${escapeHtml(patient.id)} · ${escapeHtml(patient.room)}</div>
+								<div class="mt-1 text-xl font-bold tracking-tight text-slate-900 dark:text-white">Diễn biến sinh hiệu của ${escapeHtml(patient.name)}</div>
 							</div>
 							<div class="flex flex-wrap gap-2">
-								${['24h', '7d', '30d'].map((range) => `<button data-action="set-range" data-range="${range}" class="rounded-2xl px-4 py-2.5 text-sm font-bold ${state.historyRange === range ? 'bg-brand-500 text-white ' : 'border border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200'}">${range}</button>`).join('')}
+								<button data-action="switch-view" data-view="detail" class="ui-btn ui-btn-secondary text-sm"><i data-lucide="arrow-left" class="h-4 w-4"></i>Chi tiết</button>
+								${['24h', '7d', '30d'].map((range) => `<button data-action="set-range" data-range="${range}" class="ui-btn !min-h-10 !px-3 !py-2 text-sm ${state.historyRange === range ? 'ui-btn-primary' : 'ui-btn-secondary'}">${range}</button>`).join('')}
 							</div>
 						</div>
 					</div>
 					<div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
 						<div class="space-y-6">
-							${chartCard('Audit trend', series, 'pts', 'text-brand-600 dark:text-brand-300', 'Historical view')}
-							<div class="card rounded-[16px] p-5 ">
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Event history</div>
-								<div class="mt-1 text-2xl font-bold tracking-tight">Bản ghi sự kiện</div>
+							${chartCard('Nhịp tim', heartSeries, 'bpm', 'text-brand-600 dark:text-brand-300', 'Dữ liệu realtime')}
+							<div class="grid gap-6 lg:grid-cols-2">${chartCard('SpO₂', spo2Series, '%', 'text-emerald-600 dark:text-emerald-300', 'Độ bão hòa oxy')}${chartCard('Nhiệt độ', tempSeries, '°C', 'text-amber-600 dark:text-amber-300', 'Nhiệt độ cơ thể')}</div>
+							<div class="card p-5 sm:p-6">
+								<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Dòng thời gian</div>
+								<div class="mt-1 text-xl font-bold tracking-tight text-slate-900 dark:text-white">Bản ghi trạng thái</div>
 								<div class="mt-5 space-y-3">
-									${patients.slice(0, 8).map((patient) => `
-										<div class="flex items-center justify-between rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
-											<div>
-												<div class="font-bold">${patient.name}</div>
-												<div class="text-sm text-slate-500 dark:text-slate-400">${isCriticalFirmwareStatus(patient.status) ? 'Alarm logged' : 'Firmware state archived'} · ${patient.kiosk}</div>
-											</div>
-											<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${formatRelative((Date.now() - patient.lastUpdate.getTime()) / 60000)}</div>
+									${historyEvents.slice().reverse().slice(0, 12).map((entry) => `
+										<div class="flex items-start gap-3 rounded-xl bg-[rgb(var(--panel-2))] p-4">
+											<div class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-brand-600"></div>
+											<div class="min-w-0 flex-1"><div class="font-bold text-slate-900 dark:text-white">${escapeHtml(entry.label)}</div><div class="mt-1 text-sm text-slate-600 dark:text-slate-300">${escapeHtml(entry.note || '')}</div></div>
+											<div class="shrink-0 text-xs font-semibold text-slate-600 dark:text-slate-300">${formatDateTimeFull(entry.time)}</div>
 										</div>
-									`).join('')}
+									`).join('') || '<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4 text-sm text-slate-600 dark:text-slate-300">Chưa có bản ghi trạng thái.</div>'}
 								</div>
 							</div>
 						</div>
 						<div class="space-y-6">
-							<div class="card rounded-[16px] p-5 ">
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Report controls</div>
-								<div class="mt-1 text-2xl font-bold tracking-tight">Xuất dữ liệu nhanh</div>
+							<div class="card p-5">
+								<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Báo cáo</div>
+								<div class="mt-1 text-xl font-bold tracking-tight text-slate-900 dark:text-white">Xuất dữ liệu</div>
 								<div class="mt-5 space-y-3">
-									<button data-action="export-pdf" class="w-full rounded-2xl bg-slate-950 px-4 py-3.5 text-sm font-bold text-white dark:bg-white dark:text-slate-950">Export PDF report</button>
-									<button data-action="open-toast" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Send summary to nurse station</button>
+									<button data-action="export-pdf" class="ui-btn ui-btn-primary w-full text-sm"><i data-lucide="file-down" class="h-4 w-4"></i>Xuất báo cáo PDF</button>
+									<button data-action="open-toast" class="ui-btn ui-btn-secondary w-full text-sm"><i data-lucide="send" class="h-4 w-4"></i>Gửi tóm tắt đến trạm</button>
 								</div>
 							</div>
-							<div class="card rounded-[16px] p-5 ">
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Historical KPIs</div>
-								<div class="mt-1 text-2xl font-bold tracking-tight">Theo dõi xu hướng</div>
+							<div class="card p-5">
+								<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Tóm tắt dữ liệu hiện có</div>
+								<div class="mt-1 text-xl font-bold tracking-tight text-slate-900 dark:text-white">Chỉ số trung bình</div>
 								<div class="mt-5 space-y-4">
 									${[
-										['Average HR', '74 bpm', 'safe'],
-										['Avg SpO₂', '96%', 'safe'],
-										['Alert rate', '12%', 'warning'],
-										['Fall events', '2', 'danger'],
+										['Nhịp tim trung bình', heartSeries.length ? `${average(heartSeries)} bpm` : 'Chưa có dữ liệu', heartSeries.length && (Number(average(heartSeries)) > 110 || Number(average(heartSeries)) < 55) ? 'danger' : 'safe'],
+										['SpO₂ trung bình', spo2Series.length ? `${average(spo2Series)}%` : 'Chưa có dữ liệu', spo2Series.length && Number(average(spo2Series)) < 94 ? 'danger' : 'safe'],
+										['Nhiệt độ trung bình', tempSeries.length ? `${average(tempSeries, 1)}°C` : 'Chưa có dữ liệu', tempSeries.length && Number(average(tempSeries, 1)) > 37.6 ? 'warning' : 'safe'],
+										['Bản ghi trạng thái', historyEvents.length, historyEvents.some((entry) => /ALERT|Té ngã/i.test(entry.label)) ? 'danger' : 'brand'],
 									].map(([label, value, tone]) => `
-										<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
-											<div class="flex items-center justify-between gap-3"><div class="font-semibold">${label}</div><div class="font-bold ${tone === 'safe' ? 'text-emerald-600 dark:text-emerald-300' : tone === 'danger' ? 'text-red-600 dark:text-red-300' : 'text-amber-600 dark:text-amber-300'}">${value}</div></div>
+										<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4">
+											<div class="flex items-center justify-between gap-3"><div class="font-semibold text-slate-700 dark:text-slate-200">${label}</div><div class="text-right font-bold ${tone === 'safe' ? 'text-emerald-700 dark:text-emerald-300' : tone === 'danger' ? 'text-red-600 dark:text-red-300' : tone === 'warning' ? 'text-amber-700 dark:text-amber-300' : 'text-brand-700 dark:text-brand-300'}">${value}</div></div>
 										</div>
 									`).join('')}
 								</div>
@@ -1093,73 +1285,52 @@
 
 		function renderSettings() {
 			return `
-				<div class="space-y-6 ">
-					<div class="card rounded-[16px] p-5 ">
-						<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Cấu hình</div>
-						<div class="mt-1 text-2xl font-bold tracking-tight">Settings / Preferences</div>
+				<div class="space-y-5">
+					<div class="card p-5 sm:p-6">
+						<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Tùy chọn hệ thống</div>
+						<div class="mt-1 text-xl font-bold tracking-tight text-slate-900 dark:text-white">Cài đặt giao diện và cảnh báo</div>
 					</div>
 					<div class="grid gap-6 xl:grid-cols-[1fr_1fr]">
 						<div class="space-y-6">
-							<div class="card rounded-[16px] p-5 ">
+							<div class="card p-5">
 								<div class="flex items-center justify-between gap-4">
 									<div>
-										<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Appearance</div>
-										<div class="mt-1 text-xl font-bold">Dark mode</div>
+										<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Giao diện</div>
+										<div class="mt-1 text-xl font-bold text-slate-900 dark:text-white">Chế độ hiển thị</div>
 									</div>
-									<button data-action="toggle-theme" class="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white dark:bg-white dark:text-slate-950">${state.darkMode ? 'On' : 'Off'}</button>
+									<span class="ui-badge ui-badge-info"><i data-lucide="sun" class="h-4 w-4"></i>Chế độ sáng</span>
 								</div>
 								<div class="mt-5 grid gap-3 sm:grid-cols-2">
-									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Theme</div><div class="mt-2 text-lg font-bold">Healthcare calm</div></div>
-									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Font</div><div class="mt-2 text-lg font-bold">Plus Jakarta Sans</div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Bảng màu</div><div class="mt-2 font-bold text-slate-900 dark:text-white">Trắng · Xanh dương</div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Phông chữ</div><div class="mt-2 font-bold text-slate-900 dark:text-white">Inter</div></div>
 								</div>
 							</div>
-							<div class="card rounded-[16px] p-5 ">
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Connection</div>
-								<div class="mt-1 text-xl font-bold">MQTT / WebSocket</div>
+							<div class="card p-5">
+								<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Kết nối</div>
+								<div class="mt-1 text-xl font-bold text-slate-900 dark:text-white">Trạng thái hệ thống</div>
 								<div class="mt-5 space-y-3">
-									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="flex items-center justify-between"><span class="font-semibold">MQTT</span><span class="font-bold ${state.mqttStatus === 'connected' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${state.mqttStatus}</span></div></div>
-									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="flex items-center justify-between"><span class="font-semibold">Wi-Fi</span><span class="font-bold ${state.wifiStatus === 'stable' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${state.wifiStatus}</span></div></div>
-									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50"><div class="flex items-center justify-between"><span class="font-semibold">Kiosk</span><span class="font-bold ${state.kioskStatus === 'online' ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}">${state.kioskStatus}</span></div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="flex items-center justify-between"><span class="font-semibold text-slate-700 dark:text-slate-200">MQTT / WebSocket</span><span class="ui-badge ${state.mqttStatus === 'connected' ? 'ui-badge-safe' : 'ui-badge-warning'}">${state.mqttStatus === 'connected' ? 'Đã kết nối' : 'Gián đoạn'}</span></div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="flex items-center justify-between"><span class="font-semibold text-slate-700 dark:text-slate-200">Wi-Fi</span><span class="ui-badge ${state.wifiStatus === 'stable' ? 'ui-badge-safe' : 'ui-badge-warning'}">${state.wifiStatus === 'stable' ? 'Ổn định' : 'Không ổn định'}</span></div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="flex items-center justify-between"><span class="font-semibold text-slate-700 dark:text-slate-200">Trạm kiosk</span><span class="ui-badge ${state.kioskStatus === 'online' ? 'ui-badge-safe' : 'ui-badge-warning'}">${state.kioskStatus === 'online' ? 'Trực tuyến' : 'Cần kiểm tra'}</span></div></div>
 								</div>
 							</div>
 						</div>
 						<div class="space-y-6">
-							<div class="card rounded-[16px] p-5 ">
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Profile</div>
-								<div class="mt-1 text-xl font-bold">User dropdown mock</div>
-								<div class="mt-5 space-y-3 text-sm text-slate-600 dark:text-slate-300">
-									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">Role: Nurse / Doctor</div>
-									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">Notifications: On</div>
-									<div class="rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">Language: Vietnamese</div>
+							<div class="card p-5">
+								<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Phiên đăng nhập</div>
+								<div class="mt-1 text-xl font-bold text-slate-900 dark:text-white">Thông tin người dùng</div>
+								<div class="mt-5 space-y-3 text-sm text-slate-700 dark:text-slate-200">
+									<div class="flex items-center justify-between rounded-xl bg-[rgb(var(--panel-2))] p-4"><span>Vai trò</span><strong>Y tá trưởng</strong></div>
+									<div class="flex items-center justify-between rounded-xl bg-[rgb(var(--panel-2))] p-4"><span>Thông báo</span><strong class="text-emerald-700 dark:text-emerald-300">Đang bật</strong></div>
+									<div class="flex items-center justify-between rounded-xl bg-[rgb(var(--panel-2))] p-4"><span>Ngôn ngữ</span><strong>Tiếng Việt</strong></div>
 								</div>
 							</div>
-							<div class="card rounded-[16px] p-5 ">
-								<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">UI helpers</div>
-								<div class="mt-1 text-xl font-bold">Loading skeleton / modal / toast</div>
-								<div class="mt-5 rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
-									<div class="skeleton  h-4 w-3/4 rounded-full"></div>
-									<div class="mt-3 space-y-3">
-										<div class="skeleton  h-4 w-full rounded-full"></div>
-										<div class="skeleton  mt-3 h-4 w-5/6 rounded-full"></div>
-										<div class="skeleton  mt-3 h-4 w-2/3 rounded-full"></div>
-									</div>
+							<div class="card p-5">
+								<div class="flex items-center justify-between gap-4">
+									<div><div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Cảnh báo y tế</div><div class="mt-1 text-xl font-bold text-slate-900 dark:text-white">Âm thanh cảnh báo</div><p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Phát âm báo khi có té ngã hoặc mất tín hiệu.</p></div>
+									<button data-action="toggle-sound" class="ui-btn ${state.soundEnabled ? 'ui-btn-primary' : 'ui-btn-secondary'} shrink-0 text-sm"><i data-lucide="${state.soundEnabled ? 'volume-2' : 'volume-x'}" class="h-4 w-4"></i>${state.soundEnabled ? 'Đang bật' : 'Đang tắt'}</button>
 								</div>
 							</div>
-								<div class="card rounded-[16px] p-5 ">
-									<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Firmware sequence</div>
-									<div class="mt-1 text-2xl font-bold tracking-tight">Chuỗi trạng thái từ firmware</div>
-									<div class="mt-5 space-y-3">
-										${(currentPatient()?.statusHistory || []).slice(-8).reverse().map((entry) => `
-											<div class="flex items-center justify-between gap-3 rounded-[16px] bg-slate-50 p-4 dark:bg-slate-950/50">
-												<div class="flex items-center gap-3">
-													${statusBadge(entry.status)}
-													<div class="text-sm text-slate-500 dark:text-slate-400">${firmwareStatusLabel(entry.status)}</div>
-												</div>
-												<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">${formatDateTime(new Date(entry.at))}</div>
-											</div>
-										`).join('') || '<div class="rounded-[16px] bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-950/50 dark:text-slate-400">Chưa có chuỗi trạng thái firmware.</div>'}
-									</div>
-								</div>
 						</div>
 					</div>
 				</div>
@@ -1167,33 +1338,41 @@
 		}
 
 		function renderAppShell(content) {
+			const patient = currentPatient();
+			const pageMeta = {
+				dashboard: ['Tổng quan', 'Tình trạng bệnh nhân và cảnh báo cần chú ý'],
+				patients: ['Bệnh nhân', 'Danh sách bệnh nhân đang được theo dõi'],
+				detail: [patient ? escapeHtml(patient.name) : 'Chi tiết bệnh nhân', 'Sinh hiệu và trạng thái theo thời gian thực'],
+				history: ['Lịch sử dữ liệu', 'Theo dõi diễn biến sinh hiệu theo thời gian'],
+				settings: ['Thiết lập', 'Cấu hình trải nghiệm giám sát'],
+			}[state.view] || ['Tổng quan', 'Tình trạng bệnh nhân và cảnh báo cần chú ý'];
+			const connected = state.mqttStatus === 'connected';
 			return `
 				<div class="min-h-screen">
 					<div class="flex min-h-screen">
-						<div class="lg:hidden ${state.sidebarOpen ? 'block' : 'hidden'} fixed inset-0 z-30 bg-slate-950/30 " data-action="toggle-sidebar"></div>
+						<div class="lg:hidden ${state.sidebarOpen ? 'block' : 'hidden'} fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-[2px]" data-action="toggle-sidebar"></div>
 						${renderSidebar()}
-						<div class="flex min-w-0 flex-1 flex-col">
-							<header class="sticky top-0 z-20 sticky-blur border-b border-slate-200/70 px-4 py-4 dark:border-slate-800/70 sm:px-6 lg:px-8">
-								<div class="flex items-center gap-3">
-									<button data-action="toggle-sidebar" class="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition  dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 lg:hidden"><i data-lucide="menu" class="h-5 w-5"></i></button>
-									<div class="hidden md:block">
-										<div class="text-sm text-slate-500 dark:text-slate-400">Hospital / elder care monitoring</div>
-										<div class="text-xl font-bold tracking-tight">Realtime patient care dashboard</div>
+						<div class="flex min-w-0 flex-1 flex-col bg-[rgb(var(--bg))]">
+							<header class="sticky top-0 z-20 border-b border-[rgb(var(--border))] bg-[rgb(var(--panel-2))]/95 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+								<div class="mx-auto flex min-h-[72px] max-w-[1600px] items-center gap-3">
+									<button data-action="toggle-sidebar" aria-label="Mở menu" class="rounded-xl border border-[rgb(var(--border))] bg-white p-2.5 text-slate-600 transition hover:bg-brand-50 hover:text-brand-700 dark:bg-slate-900 dark:text-slate-200 lg:hidden"><i data-lucide="menu" class="h-5 w-5"></i></button>
+									<div class="min-w-0">
+										<div class="truncate text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">${pageMeta[0]}</div>
+										<div class="hidden truncate text-sm text-slate-600 dark:text-slate-300 sm:block">${pageMeta[1]}</div>
 									</div>
 									<div class="ml-auto flex items-center gap-2 md:gap-3">
-										<div class="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 sm:inline-flex sm:items-center sm:gap-2"><i data-lucide="check-circle-2" class="h-3.5 w-3.5"></i>Connected</div>
-										<button data-action="toggle-notifications" class="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition  dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"><i data-lucide="bell" class="h-5 w-5"></i></button>
-										<button data-action="toggle-theme" class="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition  dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"><i data-lucide="${state.darkMode ? 'sun-medium' : 'moon-star'}" class="h-5 w-5"></i></button>
-										<button data-action="toggle-profile" class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition  dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-											<span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">YT</span>
+										<div class="hidden items-center gap-2 rounded-full bg-[rgb(var(--panel-2))] px-3 py-2 text-xs font-bold sm:flex ${connected ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'}"><span class="h-2 w-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-red-500'}"></span>${connected ? 'Realtime' : 'Mất kết nối'}</div>
+										<button data-action="toggle-notifications" aria-label="Thông báo" class="relative rounded-xl border border-[rgb(var(--border))] bg-white p-2.5 text-slate-600 transition hover:bg-brand-50 hover:text-brand-700 dark:bg-slate-900 dark:text-slate-200"><i data-lucide="bell" class="h-5 w-5"></i>${state.toastQueue.length ? '<span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-600 ring-2 ring-white dark:ring-slate-900"></span>' : ''}</button>
+										<button data-action="toggle-profile" class="flex items-center gap-2 rounded-xl border border-[rgb(var(--border))] bg-white p-1.5 pr-2.5 text-sm font-semibold text-slate-700 transition hover:bg-brand-50 dark:bg-slate-900 dark:text-slate-200">
+											<span class="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold" style="background: rgb(var(--color-primary)); color: #fff;">YT</span>
 											<span class="hidden sm:inline">Y tá trưởng</span>
-											<i data-lucide="chevron-down" class="h-4 w-4"></i>
+											<i data-lucide="chevron-down" class="hidden h-4 w-4 sm:block"></i>
 										</button>
 									</div>
 								</div>
 							</header>
-							<main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-								${content}
+							<main class="flex-1 px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+								<div class="mx-auto w-full max-w-[1600px]">${content}</div>
 							</main>
 						</div>
 					</div>
@@ -1220,11 +1399,10 @@
 
 			const profileMenu = state.profileOpen ? `
 				<div class="fixed right-4 top-20 z-50 w-[290px] rounded-[16px] border border-slate-200 bg-white p-3  dark:border-slate-800 dark:bg-slate-950  sm:right-6 lg:right-8">
-					<button data-action="switch-view" data-view="settings" class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><i data-lucide="settings-2" class="h-4 w-4"></i> Settings</button>
+					<button data-action="switch-view" data-view="settings" class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-200 dark:hover:bg-slate-900"><i data-lucide="settings-2" class="h-4 w-4"></i>Cài đặt</button>
 					<button data-action="switch-view" data-view="history" class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><i data-lucide="history" class="h-4 w-4"></i> Lịch sử</button>
-					<button data-action="toggle-theme" class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><i data-lucide="${state.darkMode ? 'sun-medium' : 'moon-star'}" class="h-4 w-4"></i> ${state.darkMode ? 'Light mode' : 'Dark mode'}</button>
 					<div class="my-2 h-px bg-slate-200 dark:bg-slate-800"></div>
-					<button data-action="logout" class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"><i data-lucide="log-out" class="h-4 w-4"></i> Logout demo</button>
+					<button data-action="logout" class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"><i data-lucide="log-out" class="h-4 w-4"></i>Đăng xuất</button>
 				</div>
 			` : '';
 
@@ -1232,8 +1410,8 @@
 				<div class="fixed right-4 top-20 z-50 w-[340px] rounded-[16px] border border-slate-200 bg-white p-4  dark:border-slate-800 dark:bg-slate-950  sm:right-6 lg:right-8">
 					<div class="flex items-center justify-between">
 						<div>
-							<div class="text-sm font-semibold text-slate-500 dark:text-slate-400">Notification center</div>
-							<div class="text-xl font-bold">${state.toastQueue.length} alerts</div>
+							<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Trung tâm thông báo</div>
+							<div class="text-xl font-bold">${state.toastQueue.length} cảnh báo</div>
 						</div>
 						<button data-action="toggle-notifications" class="rounded-2xl p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900"><i data-lucide="x" class="h-4 w-4"></i></button>
 					</div>
@@ -1242,9 +1420,9 @@
 							<div class="rounded-[16px] ${toast.tone === 'danger' ? 'bg-red-50 dark:bg-red-500/10' : 'bg-brand-50 dark:bg-brand-500/10'} p-4">
 								<div class="font-bold">${toast.title}</div>
 								<div class="mt-1 text-sm text-slate-600 dark:text-slate-300">${toast.message}</div>
-								<div class="mt-2 text-xs text-slate-400">${formatTime(toast.time || new Date())}</div>
+								<div class="mt-2 text-xs font-medium text-slate-600 dark:text-slate-300">${formatTime(toast.time || new Date())}</div>
 							</div>
-						`).join('') || '<div class="rounded-[16px] bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">Không có thông báo mới</div>'}
+						`).join('') || '<div class="rounded-[16px] bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">Không có thông báo mới</div>'}
 					</div>
 				</div>
 			` : '';
@@ -1255,13 +1433,13 @@
 						<div class="flex items-start gap-4">
 							<div class="flex h-14 w-14 items-center justify-center rounded-[16px] bg-red-600 text-white pulse-critical"><i data-lucide="triangle-alert" class="h-7 w-7"></i></div>
 							<div class="flex-1">
-								<div class="text-sm font-semibold uppercase tracking-[0.24em] text-red-500">Emergency alert</div>
+								<div class="text-sm font-semibold uppercase tracking-[0.16em] text-red-600">Cảnh báo khẩn cấp</div>
 								<div class="mt-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">${state.alertModal.patient.name}</div>
 								<div class="mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">${state.alertModal.type === 'critical' ? 'Phát hiện sự kiện khẩn cấp: té ngã, mất tín hiệu hoặc sinh hiệu bất thường.' : 'Cảnh báo cần kiểm tra ngay.'}</div>
 								<div class="mt-4 grid gap-3 sm:grid-cols-3">
-									<div class="rounded-[12px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold uppercase tracking-[0.18em] text-red-500">Time</div><div class="mt-2 font-bold">${formatTime(state.alertModal.time)}</div></div>
-									<div class="rounded-[12px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold uppercase tracking-[0.18em] text-red-500">Kiosk</div><div class="mt-2 font-bold">${state.alertModal.kiosk}</div></div>
-									<div class="rounded-[12px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold uppercase tracking-[0.18em] text-red-500">Room</div><div class="mt-2 font-bold">${state.alertModal.patient.room}</div></div>
+									<div class="rounded-[12px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold text-red-600">Thời gian</div><div class="mt-2 font-bold">${formatTime(state.alertModal.time)}</div></div>
+									<div class="rounded-[12px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold text-red-600">Trạm</div><div class="mt-2 font-bold">${state.alertModal.kiosk}</div></div>
+									<div class="rounded-[12px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold text-red-600">Phòng</div><div class="mt-2 font-bold">${state.alertModal.patient.room}</div></div>
 								</div>
 							</div>
 							<button data-action="dismiss-alert" class="rounded-2xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-900 dark:hover:text-slate-200"><i data-lucide="x" class="h-5 w-5"></i></button>
@@ -1343,8 +1521,8 @@
 		}
 
 		function applyTheme() {
-			document.documentElement.classList.toggle('dark', state.darkMode);
-			localStorage.setItem(THEME_KEY, state.darkMode ? 'dark' : 'light');
+			document.documentElement.classList.remove('dark');
+			localStorage.removeItem('medpulse-theme');
 		}
 
 		function showToast(title, message, tone = 'info') {
@@ -1362,15 +1540,17 @@
 			const app = document.getElementById('app');
 			app.querySelectorAll('[data-bind]').forEach((element) => {
 				element.addEventListener('input', (event) => {
-					state[element.dataset.bind] = event.target.value;
-					if (element.dataset.bind === 'pageSize') state.page = 1;
+					const key = element.dataset.bind;
+					state[key] = key === 'pageSize' ? Number(event.target.value) : event.target.value;
+					if (['search', 'filter', 'sort', 'pageSize'].includes(key)) state.page = 1;
 					render();
 				});
 			});
 			app.querySelectorAll('select[data-bind]').forEach((element) => {
 				element.addEventListener('change', (event) => {
-					state[element.dataset.bind] = event.target.value;
-					if (element.dataset.bind === 'pageSize') state.page = 1;
+					const key = element.dataset.bind;
+					state[key] = key === 'pageSize' ? Number(event.target.value) : event.target.value;
+					if (['filter', 'sort', 'pageSize'].includes(key)) state.page = 1;
 					render();
 				});
 			});
@@ -1381,11 +1561,6 @@
 					const id = element.dataset.id;
 					const range = element.dataset.range;
 					const page = element.dataset.page;
-					if (action === 'toggle-theme') {
-						state.darkMode = !state.darkMode;
-						applyTheme();
-						render();
-					}
 					if (action === 'show-login') {
 						state.screen = 'login';
 						render();
@@ -1399,6 +1574,7 @@
 						state.authed = true;
 						state.screen = 'app';
 						state.loading = true;
+						state.sidebarOpen = window.innerWidth >= 1024;
 						state.profileOpen = false;
 						state.notificationsOpen = false;
 						render();
@@ -1481,8 +1657,6 @@
 		}
 
 		function bootstrap() {
-			const savedTheme = localStorage.getItem(THEME_KEY);
-			if (savedTheme) state.darkMode = savedTheme === 'dark';
 			const saved = localStorage.getItem(STORAGE_KEY);
 			if (saved) {
 				try {
@@ -1519,6 +1693,14 @@
 					state.alertModal = null;
 					render();
 				}
+			});
+			let desktopLayout = window.innerWidth >= 1024;
+			window.addEventListener('resize', () => {
+				const nextDesktopLayout = window.innerWidth >= 1024;
+				if (nextDesktopLayout === desktopLayout) return;
+				desktopLayout = nextDesktopLayout;
+				state.sidebarOpen = nextDesktopLayout;
+				if (state.authed) render();
 			});
 		}
 
@@ -1786,7 +1968,6 @@
 					screen: state.screen,
 					view: state.view,
 					selectedPatientId: state.selectedPatientId,
-					darkMode: state.darkMode,
 					soundEnabled: state.soundEnabled,
 					historyRange: state.historyRange,
 				}));
