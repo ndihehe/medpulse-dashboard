@@ -54,6 +54,8 @@ db.getConnection((err, connection) => {
 // =========================================================================
 const patientsState = {};
 const lastSeenByPatient = new Map();
+const registeredPatientIds = new Set();
+const pendingRegistrations = new Map();
 const OFFLINE_TIMEOUT_MS = Number(process.env.MQTT_OFFLINE_TIMEOUT_MS || 25000);
 const totalPatientIds = Array.from({ length: 16 }, (_, i) => `RFID-${1001 + i}`);
 
@@ -66,6 +68,7 @@ function createDefaultPatientState(id) {
         gender:            null,
         room:              null,
         bed:               null,
+        date_of_birth:     null,
         condition_summary: null,
         // Sinh hiệu mặc định
         heartRate:    75,
@@ -96,6 +99,21 @@ function ensurePatientState(id) {
     return patientsState[id];
 }
 
+function getRegisteredPatientStates() {
+    return Object.values(patientsState)
+        .filter(patient => registeredPatientIds.has(patient.id));
+}
+
+function serializePendingRegistration(entry) {
+    return {
+        id: entry.id,
+        detectedAt: entry.detectedAt,
+        lastSeenAt: entry.lastSeenAt,
+        hasMeasurement: entry.patient.hasRealData === true,
+        latestData: serializePatientState(entry.patient),
+    };
+}
+
 totalPatientIds.forEach(id => ensurePatientState(id));
 
 // =========================================================================
@@ -110,11 +128,14 @@ function loadPatientProfiles() {
         rows.forEach(row => {
             // Đảm bảo slot RAM tồn tại dù id này chưa trong totalPatientIds
             const state = ensurePatientState(row.id);
+            registeredPatientIds.add(row.id);
+            pendingRegistrations.delete(row.id);
             state.name              = row.name              || null;
             state.age               = row.age               ?? null;
             state.gender            = row.gender            || null;
             state.room              = row.room              || null;
             state.bed               = row.bed               || null;
+            state.date_of_birth     = row.date_of_birth      || null;
             state.condition_summary = row.condition_summary || null;
         });
         console.log(` Đã load ${rows.length} hồ sơ bệnh nhân từ bảng patients`);
@@ -123,7 +144,11 @@ function loadPatientProfiles() {
             // Sau khi load xong profile và lần đo gần nhất, broadcast INITIAL_SYNC lại để web nhận ngay
             broadcastToDashboards({
                 type: 'INITIAL_SYNC',
-                data: Object.values(patientsState).map(serializePatientState),
+                data: getRegisteredPatientStates().map(serializePatientState),
+            });
+            broadcastToDashboards({
+                type: 'PENDING_REGISTRATIONS',
+                data: Array.from(pendingRegistrations.values()).map(serializePendingRegistration),
             });
         });
     });
@@ -353,6 +378,14 @@ function markPatientOffline(patientId) {
     patient.alert       = true;
     patient.ble         = 'Mất tín hiệu';
     patient.lastUpdate  = new Date();
+    if (!registeredPatientIds.has(patientId)) {
+        const pending = pendingRegistrations.get(patientId);
+        if (pending) {
+            pending.lastSeenAt = patient.lastUpdate.toISOString();
+            pending.patient = patient;
+        }
+        return;
+    }
     publishPatientUpdate(patientId, { saveToDatabase: false, markAsMeasurement: false });
 }
 
@@ -387,7 +420,11 @@ wss.on('connection', (ws) => {
     // Gửi toàn bộ state hiện tại (đã có profile) cho client mới
     ws.send(JSON.stringify({
         type: 'INITIAL_SYNC',
-        data: Object.values(patientsState).map(serializePatientState),
+        data: getRegisteredPatientStates().map(serializePatientState),
+    }));
+    ws.send(JSON.stringify({
+        type: 'PENDING_REGISTRATIONS',
+        data: Array.from(pendingRegistrations.values()).map(serializePendingRegistration),
     }));
     ws.on('close', () => console.log(' Một Dashboard Client đã đóng kết nối.'));
 });
@@ -422,10 +459,14 @@ mqttClient.on('error', (err) =>
     console.error(' Lỗi kết nối MQTT:', err.message)
 );
 
-mqttClient.on('message', (topic, message) => {
+mqttClient.on('message', (topic, message, packet) => {
     try {
         const parts = topic.split('/');
         if (parts.length !== 3 || parts[0] !== 'medpulse_duy' || parts[2] !== 'vitals') return;
+        if (packet?.retain) {
+            console.log(` Bỏ qua retained MQTT trên topic: ${topic}`);
+            return;
+        }
 
         const patientId = parts[1];
         const liveData  = JSON.parse(message.toString().trim());
@@ -449,6 +490,33 @@ mqttClient.on('message', (topic, message) => {
         const normalizedStatus = normalizeFirmwareStatus(liveData.firmwareStatus || 'IDLE');
         if (normalizedStatus) {
             syncFallSafeState(p, 'status', normalizedStatus);
+        }
+
+        // RFID chưa có hồ sơ: giữ gói tin trong RAM, không lưu vitals_log và không đưa lên dashboard.
+        if (!registeredPatientIds.has(patientId)) {
+            if (isMeasurementPayload) {
+                p.hasRealData = true;
+                p.lastUpdate = new Date();
+                p.lastMeasurementAt = p.lastUpdate.toISOString();
+            }
+            const processed = processPatientMetricsCalculation(patientId);
+            const existing = pendingRegistrations.get(patientId);
+            const pending = {
+                id: patientId,
+                detectedAt: existing?.detectedAt || new Date().toISOString(),
+                lastSeenAt: new Date().toISOString(),
+                patient: processed,
+            };
+            pendingRegistrations.set(patientId, pending);
+
+            if (!existing) {
+                broadcastToDashboards({
+                    type: 'UNKNOWN_PATIENT_DETECTED',
+                    data: serializePendingRegistration(pending),
+                });
+                console.log(` Phát hiện RFID chưa đăng ký: ${patientId}`);
+            }
+            return;
         }
 
         if (!p.signalLost) {
@@ -539,6 +607,115 @@ function saveVitalsToDatabase(p) {
 // 7. HTTP API
 // =========================================================================
 
+function calculateAgeFromDateOfBirth(dateOfBirth) {
+    if (!dateOfBirth) return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) return null;
+    const birthDate = new Date(`${dateOfBirth}T00:00:00Z`);
+    if (Number.isNaN(birthDate.getTime()) || birthDate.toISOString().slice(0, 10) !== dateOfBirth || birthDate > new Date()) return null;
+    const today = new Date();
+    let age = today.getUTCFullYear() - birthDate.getUTCFullYear();
+    const monthDelta = today.getUTCMonth() - birthDate.getUTCMonth();
+    if (monthDelta < 0 || (monthDelta === 0 && today.getUTCDate() < birthDate.getUTCDate())) age--;
+    return age >= 0 && age <= 130 ? age : null;
+}
+
+function insertPatientProfile(profile, callback) {
+    const withDateOfBirth = `
+        INSERT INTO patients
+        (id, name, age, date_of_birth, gender, room, bed, condition_summary)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const values = [
+        profile.id, profile.name, profile.age, profile.dateOfBirth,
+        profile.gender, profile.room, profile.bed, profile.conditionSummary,
+    ];
+
+    db.query(withDateOfBirth, values, (err, result) => {
+        if (!err || err.code !== 'ER_BAD_FIELD_ERROR') return callback(err, result, true);
+
+        // Railway chưa chạy migration date_of_birth: vẫn đăng ký được và lưu tuổi đã tính.
+        const legacyQuery = `
+            INSERT INTO patients
+            (id, name, age, gender, room, bed, condition_summary)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `;
+        const legacyValues = [
+            profile.id, profile.name, profile.age,
+            profile.gender, profile.room, profile.bed, profile.conditionSummary,
+        ];
+        db.query(legacyQuery, legacyValues, (legacyErr, legacyResult) =>
+            callback(legacyErr, legacyResult, false)
+        );
+    });
+}
+
+app.get('/api/pending-registrations', (req, res) => {
+    res.json(Array.from(pendingRegistrations.values()).map(serializePendingRegistration));
+});
+
+app.post('/api/patients/:id/register', (req, res) => {
+    const id = String(req.params.id || '').trim();
+    const pending = pendingRegistrations.get(id);
+    if (!pending) return res.status(404).json({ error: 'RFID này không còn trong hàng chờ đăng ký' });
+    if (registeredPatientIds.has(id)) return res.status(409).json({ error: 'Bệnh nhân đã được đăng ký' });
+
+    const name = String(req.body?.name || '').trim();
+    const dateOfBirth = String(req.body?.dateOfBirth || '').trim() || null;
+    const suppliedAge = Number(req.body?.age);
+    const calculatedAge = calculateAgeFromDateOfBirth(dateOfBirth);
+    const age = calculatedAge ?? (Number.isInteger(suppliedAge) && suppliedAge >= 0 && suppliedAge <= 130 ? suppliedAge : null);
+    const gender = String(req.body?.gender || '').trim().slice(0, 20) || null;
+    const room = String(req.body?.room || '').trim().slice(0, 20) || null;
+    const bed = String(req.body?.bed || '').trim().slice(0, 20) || null;
+    const conditionSummary = String(req.body?.conditionSummary || '').trim().slice(0, 1000) || null;
+
+    if (name.length < 2 || name.length > 100) {
+        return res.status(400).json({ error: 'Tên bệnh nhân phải có từ 2 đến 100 ký tự' });
+    }
+    if (dateOfBirth && calculatedAge === null) {
+        return res.status(400).json({ error: 'Ngày sinh không hợp lệ' });
+    }
+    if (age === null) {
+        return res.status(400).json({ error: 'Cần nhập ngày sinh hoặc tuổi hợp lệ' });
+    }
+
+    const profile = { id, name, age, dateOfBirth, gender, room, bed, conditionSummary };
+    insertPatientProfile(profile, (err, result, storedDateOfBirth) => {
+        if (err) {
+            if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'RFID đã tồn tại trong patients' });
+            console.error(` Lỗi đăng ký bệnh nhân ${id}:`, err.message);
+            return res.status(500).json({ error: 'Không thể lưu hồ sơ bệnh nhân', details: err.message });
+        }
+
+        const patient = pending.patient;
+        patient.name = name;
+        patient.age = age;
+        patient.date_of_birth = storedDateOfBirth ? dateOfBirth : null;
+        patient.gender = gender;
+        patient.room = room;
+        patient.bed = bed;
+        patient.condition_summary = conditionSummary;
+        registeredPatientIds.add(id);
+        pendingRegistrations.delete(id);
+
+        const updated = processPatientMetricsCalculation(id);
+        if (updated.hasRealData) saveVitalsToDatabase(updated);
+        broadcastToDashboards({ type: 'PATIENT_UPDATE', data: serializePatientState(updated) });
+        broadcastToDashboards({
+            type: 'PENDING_REGISTRATIONS',
+            data: Array.from(pendingRegistrations.values()).map(serializePendingRegistration),
+        });
+
+        res.status(201).json({
+            patient: serializePatientState(updated),
+            storedDateOfBirth,
+            message: storedDateOfBirth
+                ? 'Đăng ký bệnh nhân thành công'
+                : 'Đăng ký thành công; cần chạy migration date_of_birth để lưu ngày sinh',
+        });
+    });
+});
+
 // [FIX] API /api/patients — join thêm profile từ DB để chắc chắn có name/age/gender
 app.get('/api/patients', (req, res) => {
     db.query('SELECT * FROM patients', (err, rows) => {
@@ -553,7 +730,9 @@ app.get('/api/patients', (req, res) => {
                 latestRows.forEach(row => applyLatestVitalsToPatientState(ensurePatientState(row.id), row));
             }
 
-            const result = Object.values(patientsState).map(p => {
+            const result = Object.values(patientsState)
+                .filter(p => Boolean(profileMap[p.id]))
+                .map(p => {
                 const profile = profileMap[p.id] || {};
                 return {
                     ...serializePatientState(p),
@@ -575,7 +754,7 @@ app.get('/api/patients', (req, res) => {
 app.get('/api/patients/:id', (req, res) => {
     const id      = req.params.id;
     const patient = patientsState[id];
-    if (!patient) return res.status(404).json({ error: 'Không tìm thấy bệnh nhân' });
+    if (!patient || !registeredPatientIds.has(id)) return res.status(404).json({ error: 'Không tìm thấy bệnh nhân' });
 
     db.query('SELECT * FROM patients WHERE id = ?', [id], (err, rows) => {
         const profile = (!err && rows && rows[0]) ? rows[0] : {};
@@ -618,6 +797,9 @@ app.get('/api/patients/:id', (req, res) => {
 // API lịch sử vitals
 app.get('/api/patients/:id/history', (req, res) => {
     const patientId = req.params.id;
+    if (!registeredPatientIds.has(patientId)) {
+        return res.status(404).json({ error: 'Bệnh nhân chưa được đăng ký' });
+    }
     const limit     = parseInt(req.query.limit) || 30;
 
     const query = `

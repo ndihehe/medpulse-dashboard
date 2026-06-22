@@ -1,6 +1,25 @@
 CREATE DATABASE IF NOT EXISTS medpulse_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE medpulse_db;
 
+-- Hồ sơ bệnh nhân. RFID chỉ xuất hiện trên dashboard sau khi có dòng trong bảng này.
+CREATE TABLE IF NOT EXISTS patients (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INT NULL,
+    date_of_birth DATE NULL,
+    gender VARCHAR(20) NULL,
+    room VARCHAR(20) NULL,
+    bed VARCHAR(20) NULL,
+    condition_summary TEXT NULL,
+    risk_score INT DEFAULT 0,
+    current_status VARCHAR(50) DEFAULT 'IDLE',
+    status_level VARCHAR(20) DEFAULT 'safe',
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Railway database hiện có cần chạy một lần:
+-- ALTER TABLE patients ADD COLUMN date_of_birth DATE NULL AFTER age;
+
 -- Bảng lưu trữ lịch sử sinh hiệu và trạng thái cảnh báo của bệnh nhân
 CREATE TABLE IF NOT EXISTS vitals_log (
     id INT AUTO_INCREMENT PRIMARY KEY,
