@@ -220,6 +220,29 @@
 			background: #eef7ff;
 			border-color: #90caf9;
 		}
+		.birth-date-segment {
+			min-width: 0;
+			text-align: center;
+			font-variant-numeric: tabular-nums;
+		}
+		.birth-date-picker {
+			background: #ffffff;
+			border: 1px solid #d6e2ef;
+			box-shadow: 0 18px 44px rgba(13, 33, 55, 0.18);
+			animation: birthDatePickerIn 0.16s ease-out;
+		}
+		.birth-date-options {
+			scrollbar-width: thin;
+			scrollbar-color: #90caf9 #eef7ff;
+		}
+		.birth-date-option[aria-selected="true"] {
+			background: #1565c0;
+			color: #ffffff;
+		}
+		@keyframes birthDatePickerIn {
+			from { opacity: 0; transform: translateY(-6px) scale(0.985); }
+			to { opacity: 1; transform: translateY(0) scale(1); }
+		}
 		.pulse-critical {
 			animation: pulseDanger 1.2s ease-in-out infinite;
 		}
@@ -524,6 +547,10 @@
 			registrationPatientId: null,
 			registrationName: '',
 			registrationDateOfBirth: '',
+			registrationBirthDay: '',
+			registrationBirthMonth: '',
+			registrationBirthYear: '',
+			registrationDatePickerOpen: false,
 			registrationAge: '',
 			registrationGender: '',
 			registrationRoom: '',
@@ -689,6 +716,10 @@
 			if (state.registrationPatientId !== patientId) {
 				state.registrationName = '';
 				state.registrationDateOfBirth = '';
+				state.registrationBirthDay = '';
+				state.registrationBirthMonth = '';
+				state.registrationBirthYear = '';
+				state.registrationDatePickerOpen = false;
 				state.registrationAge = '';
 				state.registrationGender = '';
 				state.registrationRoom = '';
@@ -701,6 +732,59 @@
 			state.profileOpen = false;
 			state.view = 'register';
 			render();
+		}
+
+		function calculateAgeFromBirthDate(year, month, day) {
+			const today = new Date();
+			let age = today.getFullYear() - year;
+			if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age--;
+			return age >= 0 && age <= 130 ? age : null;
+		}
+
+		function syncRegistrationBirthDate() {
+			const day = Number(state.registrationBirthDay);
+			const month = Number(state.registrationBirthMonth);
+			const year = Number(state.registrationBirthYear);
+			const candidate = new Date(year, month - 1, day);
+			const valid = /^\d{1,2}$/.test(state.registrationBirthDay)
+				&& /^\d{1,2}$/.test(state.registrationBirthMonth)
+				&& /^\d{4}$/.test(state.registrationBirthYear)
+				&& candidate.getFullYear() === year
+				&& candidate.getMonth() === month - 1
+				&& candidate.getDate() === day
+				&& candidate <= new Date();
+			if (!valid) {
+				state.registrationDateOfBirth = '';
+				if (state.registrationBirthDay || state.registrationBirthMonth || state.registrationBirthYear) state.registrationAge = '';
+				return null;
+			}
+			state.registrationDateOfBirth = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+			state.registrationAge = String(calculateAgeFromBirthDate(year, month, day));
+			return Number(state.registrationAge);
+		}
+
+		function validatePatientRegistrationForm() {
+			const name = String(state.registrationName || '').trim();
+			if (name.length < 2 || name.length > 100) return 'Họ và tên phải có từ 2 đến 100 ký tự.';
+
+			const hasAnyBirthPart = Boolean(state.registrationBirthDay || state.registrationBirthMonth || state.registrationBirthYear);
+			if (hasAnyBirthPart && !state.registrationDateOfBirth) {
+				const day = Number(state.registrationBirthDay);
+				const month = Number(state.registrationBirthMonth);
+				const year = Number(state.registrationBirthYear);
+				if (!Number.isInteger(day) || day < 1 || day > 31) return 'Ngày sinh phải là số từ 1 đến 31.';
+				if (!Number.isInteger(month) || month < 1 || month > 12) return 'Tháng sinh phải là số từ 1 đến 12.';
+				if (!/^\d{4}$/.test(state.registrationBirthYear)) return 'Năm sinh phải gồm đủ 4 chữ số.';
+				if (year > new Date().getFullYear() || year < new Date().getFullYear() - 130) return 'Năm sinh không nằm trong phạm vi hợp lệ.';
+				return 'Ngày sinh không tồn tại hoặc nằm sau ngày hiện tại.';
+			}
+
+			if (!state.registrationDateOfBirth) {
+				if (String(state.registrationAge).trim() === '') return 'Cần nhập ngày sinh hoặc tuổi bệnh nhân.';
+				const age = Number(state.registrationAge);
+				if (!Number.isInteger(age) || age < 0 || age > 130) return 'Tuổi phải là số nguyên từ 0 đến 130.';
+			}
+			return '';
 		}
 
 		function upsertPendingRegistration(entry, notify = false) {
@@ -725,6 +809,12 @@
 
 		async function submitPatientRegistration() {
 			if (!state.registrationPatientId || state.registrationSubmitting) return;
+			const validationError = validatePatientRegistrationForm();
+			if (validationError) {
+				state.registrationError = validationError;
+				showToast('Không thể lưu hồ sơ', validationError, 'warning');
+				return;
+			}
 			state.registrationSubmitting = true;
 			state.registrationError = '';
 			render();
@@ -773,7 +863,7 @@
 			} catch (error) {
 				state.registrationSubmitting = false;
 				state.registrationError = error.message;
-				render();
+				showToast('Không thể lưu hồ sơ', error.message, 'danger');
 			}
 		}
 
@@ -1417,6 +1507,13 @@
 				return `<div class="card p-6"><div class="text-xl font-bold text-slate-900">RFID không còn trong hàng chờ</div><button data-action="switch-view" data-view="dashboard" class="ui-btn ui-btn-primary mt-4">Về tổng quan</button></div>`;
 			}
 			const latest = pending.latestData || {};
+			const currentYear = new Date().getFullYear();
+			const selectedYear = Number(state.registrationBirthYear) || currentYear;
+			const selectedMonth = Number(state.registrationBirthMonth) || 1;
+			const daysInSelectedMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+			const dayOptions = Array.from({ length: daysInSelectedMonth }, (_, index) => index + 1).map(day => `<button type="button" data-action="select-birth-day" data-value="${day}" aria-selected="${Number(state.registrationBirthDay) === day}" class="birth-date-option rounded-lg px-2 py-2 text-sm font-semibold hover:bg-brand-50">${day}</button>`).join('');
+			const monthOptions = Array.from({ length: 12 }, (_, index) => index + 1).map(month => `<button type="button" data-action="select-birth-month" data-value="${month}" aria-selected="${Number(state.registrationBirthMonth) === month}" class="birth-date-option rounded-lg px-2 py-2 text-sm font-semibold hover:bg-brand-50">Tháng ${month}</button>`).join('');
+			const yearOptions = Array.from({ length: 131 }, (_, index) => currentYear - index).map(year => `<button type="button" data-action="select-birth-year" data-value="${year}" aria-selected="${Number(state.registrationBirthYear) === year}" class="birth-date-option w-full rounded-lg px-3 py-2 text-left text-sm font-semibold hover:bg-brand-50">${year}</button>`).join('');
 			return `
 				<div class="mx-auto max-w-5xl space-y-5">
 					<section class="card overflow-hidden">
@@ -1430,12 +1527,34 @@
 					</section>
 
 					<section class="card p-5 sm:p-6">
-						<div><h3 class="text-xl font-bold text-slate-900">Thông tin bệnh nhân</h3><p class="mt-1 text-sm text-slate-600">Hồ sơ chỉ được đưa lên dashboard sau khi lưu thành công.</p></div>
+						<div><h3 class="text-xl font-bold text-slate-900">Thông tin bệnh nhân</h3><p class="mt-1 text-sm text-slate-600">Thông tin sẽ được liên kết với thẻ RFID sau khi lưu thành công.</p></div>
 						${state.registrationError ? `<div class="ui-alert mt-5 p-4 text-sm font-semibold text-red-700">${escapeHtml(state.registrationError)}</div>` : ''}
 						<div class="mt-6 grid gap-5 sm:grid-cols-2">
 							<label class="block sm:col-span-2"><span class="mb-2 block text-sm font-semibold text-slate-700">Họ và tên <span class="text-red-600">*</span></span><input data-bind="registrationName" value="${escapeHtml(state.registrationName)}" maxlength="100" placeholder="Nguyễn Văn A" class="w-full border px-4 py-3" /></label>
-							<label class="block"><span class="mb-2 block text-sm font-semibold text-slate-700">Ngày sinh</span><input data-bind="registrationDateOfBirth" value="${escapeHtml(state.registrationDateOfBirth)}" type="date" max="${new Date().toISOString().slice(0, 10)}" class="w-full border px-4 py-3" /></label>
-							<label class="block"><span class="mb-2 block text-sm font-semibold text-slate-700">Tuổi (nếu không nhập ngày sinh)</span><input data-bind="registrationAge" value="${escapeHtml(state.registrationAge)}" type="number" min="0" max="130" placeholder="72" class="w-full border px-4 py-3" /></label>
+							<div class="relative block">
+								<span class="mb-2 block text-sm font-semibold text-slate-700">Ngày sinh</span>
+								<div class="grid grid-cols-[1fr_auto_1fr_auto_1.35fr_auto] items-center gap-2">
+									<input data-birth-part="day" value="${escapeHtml(state.registrationBirthDay)}" inputmode="numeric" maxlength="2" placeholder="Ngày" aria-label="Ngày sinh" class="birth-date-segment w-full border px-2 py-3" />
+									<span class="font-bold text-slate-400">/</span>
+									<input data-birth-part="month" value="${escapeHtml(state.registrationBirthMonth)}" inputmode="numeric" maxlength="2" placeholder="Tháng" aria-label="Tháng sinh" class="birth-date-segment w-full border px-2 py-3" />
+									<span class="font-bold text-slate-400">/</span>
+									<input data-birth-part="year" value="${escapeHtml(state.registrationBirthYear)}" inputmode="numeric" maxlength="4" placeholder="Năm" aria-label="Năm sinh" class="birth-date-segment w-full border px-2 py-3" />
+									<button type="button" data-action="toggle-birth-picker" aria-label="Mở bảng chọn ngày sinh" class="ui-btn ui-btn-secondary !min-h-[46px] !px-3"><i data-lucide="calendar-days" class="h-5 w-5"></i></button>
+								</div>
+								<p class="mt-2 text-xs text-slate-500">Nhập lần lượt ngày, tháng, năm hoặc chọn trong bảng.</p>
+								${state.registrationDatePickerOpen ? `
+									<div class="birth-date-picker absolute left-0 top-full z-[80] mt-2 w-[min(620px,calc(100vw-3rem))] rounded-2xl p-4">
+										<div class="mb-3 flex items-center justify-between"><strong class="text-slate-900">Chọn ngày sinh</strong><button type="button" data-action="toggle-birth-picker" class="rounded-lg p-2 text-slate-500 hover:bg-brand-50"><i data-lucide="x" class="h-4 w-4"></i></button></div>
+										<div class="grid grid-cols-[1fr_1.35fr_1fr] gap-3">
+											<div><div class="mb-2 text-xs font-bold uppercase text-slate-500">Ngày</div><div class="birth-date-options grid max-h-56 grid-cols-4 gap-1 overflow-y-auto pr-1">${dayOptions}</div></div>
+											<div><div class="mb-2 text-xs font-bold uppercase text-slate-500">Tháng</div><div class="birth-date-options grid max-h-56 grid-cols-2 gap-1 overflow-y-auto pr-1">${monthOptions}</div></div>
+											<div><div class="mb-2 text-xs font-bold uppercase text-slate-500">Năm</div><div class="birth-date-options max-h-56 space-y-1 overflow-y-auto pr-1">${yearOptions}</div></div>
+										</div>
+										<div class="mt-4 flex justify-end"><button type="button" data-action="close-birth-picker" class="ui-btn ui-btn-primary">Xong</button></div>
+									</div>
+								` : ''}
+							</div>
+							<label class="block"><span class="mb-2 block text-sm font-semibold text-slate-700">Tuổi</span><input id="registration-age" data-bind="registrationAge" value="${escapeHtml(state.registrationAge)}" type="number" min="0" max="130" placeholder="72" ${state.registrationDateOfBirth ? 'readonly' : ''} class="w-full border px-4 py-3 ${state.registrationDateOfBirth ? 'bg-slate-100 font-bold text-brand-800' : ''}" /><span id="registration-age-help" class="mt-2 block text-xs text-slate-500">${state.registrationDateOfBirth ? 'Được tự động tính từ ngày sinh.' : 'Có thể nhập tuổi nếu không biết ngày sinh.'}</span></label>
 							<label class="block"><span class="mb-2 block text-sm font-semibold text-slate-700">Giới tính</span><select data-bind="registrationGender" class="w-full border px-4 py-3"><option value="">Chọn giới tính</option><option value="Nam" ${state.registrationGender === 'Nam' ? 'selected' : ''}>Nam</option><option value="Nữ" ${state.registrationGender === 'Nữ' ? 'selected' : ''}>Nữ</option><option value="Khác" ${state.registrationGender === 'Khác' ? 'selected' : ''}>Khác</option></select></label>
 							<label class="block"><span class="mb-2 block text-sm font-semibold text-slate-700">Phòng</span><input data-bind="registrationRoom" value="${escapeHtml(state.registrationRoom)}" maxlength="20" placeholder="Phòng 101" class="w-full border px-4 py-3" /></label>
 							<label class="block"><span class="mb-2 block text-sm font-semibold text-slate-700">Giường</span><input data-bind="registrationBed" value="${escapeHtml(state.registrationBed)}" maxlength="20" placeholder="Giường 01" class="w-full border px-4 py-3" /></label>
@@ -1443,7 +1562,7 @@
 						</div>
 						<div class="mt-6 flex flex-col-reverse gap-3 border-t border-[rgb(var(--border))] pt-5 sm:flex-row sm:justify-end">
 							<button data-action="switch-view" data-view="dashboard" class="ui-btn ui-btn-secondary">Để sau</button>
-							<button data-action="submit-registration" class="ui-btn ui-btn-primary" ${state.registrationSubmitting ? 'disabled' : ''}><i data-lucide="${state.registrationSubmitting ? 'loader-circle' : 'save'}" class="h-4 w-4 ${state.registrationSubmitting ? 'animate-spin' : ''}"></i>${state.registrationSubmitting ? 'Đang lưu...' : 'Lưu và đưa lên dashboard'}</button>
+							<button data-action="submit-registration" class="ui-btn ui-btn-primary" ${state.registrationSubmitting ? 'disabled' : ''}><i data-lucide="${state.registrationSubmitting ? 'loader-circle' : 'save'}" class="h-4 w-4 ${state.registrationSubmitting ? 'animate-spin' : ''}"></i>${state.registrationSubmitting ? 'Đang lưu...' : 'Lưu'}</button>
 						</div>
 					</section>
 				</div>
@@ -1709,6 +1828,32 @@
 
 		function bindEvents() {
 			const app = document.getElementById('app');
+			const birthPartKeys = {
+				day: 'registrationBirthDay',
+				month: 'registrationBirthMonth',
+				year: 'registrationBirthYear',
+			};
+			const birthParts = [...app.querySelectorAll('[data-birth-part]')];
+			birthParts.forEach((element, index) => {
+				element.addEventListener('input', () => {
+					const part = element.dataset.birthPart;
+					const maxLength = part === 'year' ? 4 : 2;
+					element.value = element.value.replace(/\D/g, '').slice(0, maxLength);
+					state[birthPartKeys[part]] = element.value;
+					const calculatedAge = syncRegistrationBirthDate();
+					const ageInput = app.querySelector('#registration-age');
+					const ageHelp = app.querySelector('#registration-age-help');
+					if (ageInput) {
+						ageInput.value = calculatedAge === null ? state.registrationAge : String(calculatedAge);
+						ageInput.readOnly = calculatedAge !== null;
+					}
+					if (ageHelp) ageHelp.textContent = calculatedAge === null ? 'Có thể nhập tuổi nếu không biết ngày sinh.' : 'Được tự động tính từ ngày sinh.';
+					if (element.value.length === maxLength && birthParts[index + 1]) birthParts[index + 1].focus();
+				});
+				element.addEventListener('keydown', (event) => {
+					if (event.key === 'Backspace' && !element.value && birthParts[index - 1]) birthParts[index - 1].focus();
+				});
+			});
 			app.querySelectorAll('[data-bind]').forEach((element) => {
 				element.addEventListener('input', (event) => {
 					const key = element.dataset.bind;
@@ -1790,6 +1935,22 @@
 					}
 					if (action === 'open-registration' && id) {
 						openPatientRegistration(id);
+					}
+					if (action === 'toggle-birth-picker') {
+						state.registrationDatePickerOpen = !state.registrationDatePickerOpen;
+						render();
+						if (state.registrationDatePickerOpen) setTimeout(() => document.querySelector('[data-action="select-birth-year"][aria-selected="true"]')?.scrollIntoView({ block: 'center' }), 0);
+					}
+					if (action === 'close-birth-picker') {
+						state.registrationDatePickerOpen = false;
+						render();
+					}
+					if (action === 'select-birth-day' || action === 'select-birth-month' || action === 'select-birth-year') {
+						const key = action === 'select-birth-day' ? 'registrationBirthDay' : action === 'select-birth-month' ? 'registrationBirthMonth' : 'registrationBirthYear';
+						state[key] = String(element.dataset.value || '');
+						syncRegistrationBirthDate();
+						render();
+						setTimeout(() => document.querySelector('[data-action="select-birth-year"][aria-selected="true"]')?.scrollIntoView({ block: 'center' }), 0);
 					}
 					if (action === 'submit-registration') {
 						submitPatientRegistration();

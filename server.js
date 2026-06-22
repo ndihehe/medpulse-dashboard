@@ -661,7 +661,9 @@ app.post('/api/patients/:id/register', (req, res) => {
 
     const name = String(req.body?.name || '').trim();
     const dateOfBirth = String(req.body?.dateOfBirth || '').trim() || null;
-    const suppliedAge = Number(req.body?.age);
+	const rawAge = req.body?.age;
+	const hasSuppliedAge = rawAge !== null && rawAge !== undefined && String(rawAge).trim() !== '';
+	const suppliedAge = hasSuppliedAge ? Number(rawAge) : Number.NaN;
     const calculatedAge = calculateAgeFromDateOfBirth(dateOfBirth);
     const age = calculatedAge ?? (Number.isInteger(suppliedAge) && suppliedAge >= 0 && suppliedAge <= 130 ? suppliedAge : null);
     const gender = String(req.body?.gender || '').trim().slice(0, 20) || null;
