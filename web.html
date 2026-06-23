@@ -544,6 +544,10 @@
 			toastQueue: [],
 			alertHistory: {},
 			pendingRegistrations: [],
+			bleDevices: [],
+			stations: [],
+			selectedBleDeviceId: '',
+			deviceActionPending: false,
 			registrationPatientId: null,
 			registrationName: '',
 			registrationDateOfBirth: '',
@@ -574,6 +578,8 @@
 			loginPin: '',
 			loginMode: 'staff',
 			historyRange: '7d',
+			historyLoading: false,
+			historyError: '',
 			dateRange: '24h',
 			floorFocus: 'north-wing',
 			soundEnabled: true,
@@ -705,6 +711,84 @@
 
 		function currentPatient() {
 			return patients.find((patient) => patient.id === state.selectedPatientId) || patients[0];
+		}
+
+		const BLE_DEVICE_STATUSES = new Set(['OFFLINE', 'ONLINE', 'GRACE', 'ALERT', 'STATION_OFFLINE']);
+
+		function normalizeBleDeviceState(raw) {
+			if (!raw || typeof raw.deviceId !== 'string' || !/^[A-Za-z0-9_-]{1,24}$/.test(raw.deviceId)) return null;
+			const status = BLE_DEVICE_STATUSES.has(raw.status) ? raw.status : 'OFFLINE';
+			return {
+				deviceId: raw.deviceId,
+				patientId: raw.patientId || null,
+				patientName: raw.patientName || null,
+				stationId: raw.stationId || null,
+				status,
+				sessionActive: raw.sessionActive === true,
+				sessionBlocked: raw.sessionBlocked === true,
+				seenToday: raw.seenToday === true,
+				firstSeenToday: raw.firstSeenToday || null,
+				lastBleSeen: raw.lastBleSeen || null,
+				disconnectedAt: raw.disconnectedAt || null,
+				alertStartedAt: raw.alertStartedAt || null,
+				rssi: Number.isFinite(raw.rssi) ? raw.rssi : null,
+				battery: Number.isFinite(raw.battery) ? raw.battery : null,
+				lastEvent: raw.lastEvent || null,
+				lastUpdated: raw.lastUpdated || null,
+			};
+		}
+
+		function upsertBleDevice(raw) {
+			const device = normalizeBleDeviceState(raw);
+			if (!device) return null;
+			const index = state.bleDevices.findIndex(item => item.deviceId === device.deviceId);
+			if (index === -1) state.bleDevices.push(device);
+			else state.bleDevices[index] = device;
+			return device;
+		}
+
+		function normalizeStationState(raw) {
+			if (!raw || typeof raw.stationId !== 'string' || !/^[A-Za-z0-9_-]{1,50}$/.test(raw.stationId)) return null;
+			return {
+				stationId: raw.stationId,
+				status: raw.status === 'ONLINE' ? 'ONLINE' : 'OFFLINE',
+				lastSeenAt: raw.lastSeenAt || null,
+				wifiRssi: Number.isFinite(raw.wifiRssi) ? raw.wifiRssi : null,
+				bleScanner: raw.bleScanner === true,
+				uptimeMs: Number.isFinite(raw.uptimeMs) ? raw.uptimeMs : null,
+				lastUpdated: raw.lastUpdated || null,
+			};
+		}
+
+		function upsertStation(raw) {
+			const station = normalizeStationState(raw);
+			if (!station) return null;
+			const index = state.stations.findIndex(item => item.stationId === station.stationId);
+			if (index === -1) state.stations.push(station);
+			else state.stations[index] = station;
+			return station;
+		}
+
+		function deviceForPatient(patientId) {
+			return state.bleDevices.find(device => device.patientId === patientId) || null;
+		}
+
+		function bleStatusMeta(device) {
+			if (!device) return { label: 'Chưa liên kết', tone: 'slate', detail: 'Chưa gán thiết bị đeo' };
+			const states = {
+				ONLINE: { label: 'Online', tone: 'safe', detail: 'Trạm đang nhận BLE' },
+				GRACE: { label: 'Chờ kết nối lại', tone: 'warning', detail: 'Đang trong thời gian chờ 180 giây' },
+				ALERT: { label: 'Mất kết nối', tone: 'danger', detail: 'Quá 180 giây chưa nhận lại BLE' },
+				STATION_OFFLINE: { label: 'Trạm offline', tone: 'warning', detail: 'Không thể xác định trạng thái thiết bị đeo' },
+				OFFLINE: { label: 'Offline', tone: 'slate', detail: device.seenToday ? 'Phiên theo dõi đã kết thúc' : 'Chưa khởi động trong ngày' },
+			};
+			return states[device.status] || states.OFFLINE;
+		}
+
+		function bleBadge(device) {
+			const meta = bleStatusMeta(device);
+			const classes = meta.tone === 'safe' ? 'ui-badge-safe' : meta.tone === 'danger' ? 'ui-badge-danger' : meta.tone === 'warning' ? 'ui-badge-warning' : 'bg-slate-100 text-slate-700';
+			return `<span class="ui-badge ${classes}"><i data-lucide="${meta.tone === 'safe' ? 'bluetooth-connected' : meta.tone === 'danger' ? 'bluetooth-off' : 'bluetooth'}" class="h-4 w-4"></i>${meta.label}</span>`;
 		}
 
 		function openPatientRegistration(patientId) {
@@ -874,22 +958,131 @@
 			}
 		}
 
+		async function loadSelectedPatientHistory() {
+			const patient = currentPatient();
+			if (!patient) return;
+			const patientId = patient.id;
+			const requestedRange = state.historyRange;
+			state.historyLoading = true;
+			state.historyError = '';
+			render();
+
+			try {
+				const response = await fetch(`${BACKEND_BASE_URL}/api/patients/${encodeURIComponent(patientId)}/history?range=${encodeURIComponent(requestedRange)}&limit=1000`);
+				const payload = await response.json();
+				if (!response.ok) throw new Error(payload.error || 'Không thể tải lịch sử bệnh nhân');
+				if (!Array.isArray(payload)) throw new Error('Dữ liệu lịch sử không đúng định dạng');
+
+				const target = patients.find(item => item.id === patientId);
+				if (target) {
+					const numericSeries = (key) => payload.map(row => Number(row[key])).filter(Number.isFinite);
+					target.history = {
+						heartRate: numericSeries('heartRate'),
+						spo2: numericSeries('spo2'),
+						temp: numericSeries('temp'),
+					};
+					target.historyRecords = payload;
+					target.statusHistory = payload.map(row => ({
+						status: row.current_status || row.status || 'IDLE',
+						at: row.time,
+					}));
+				}
+				if (state.selectedPatientId === patientId && state.historyRange === requestedRange) {
+					state.historyLoading = false;
+					render();
+				}
+			} catch (error) {
+				if (state.selectedPatientId === patientId && state.historyRange === requestedRange) {
+					state.historyLoading = false;
+					state.historyError = error.message;
+					showToast('Không thể tải biểu đồ', error.message, 'danger');
+				}
+			}
+		}
+
+		async function fetchBleInfrastructure() {
+			const [devicesResponse, stationsResponse] = await Promise.all([
+				fetch(`${BACKEND_BASE_URL}/api/ble/devices`),
+				fetch(`${BACKEND_BASE_URL}/api/stations`),
+			]);
+			if (!devicesResponse.ok) throw new Error('Không thể tải danh sách thiết bị BLE');
+			if (!stationsResponse.ok) throw new Error('Không thể tải trạng thái trạm');
+			const [devices, stations] = await Promise.all([devicesResponse.json(), stationsResponse.json()]);
+			state.bleDevices = [];
+			state.stations = [];
+			(devices || []).forEach(upsertBleDevice);
+			(stations || []).forEach(upsertStation);
+		}
+
+		async function linkSelectedBleDevice() {
+			const patient = currentPatient();
+			const deviceId = state.selectedBleDeviceId;
+			if (!patient || !deviceId || state.deviceActionPending) return;
+			state.deviceActionPending = true;
+			render();
+			try {
+				const response = await fetch(`${BACKEND_BASE_URL}/api/patients/${encodeURIComponent(patient.id)}/device`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ deviceId }),
+				});
+				const payload = await response.json();
+				if (!response.ok) throw new Error(payload.error || 'Không thể liên kết thiết bị');
+				upsertBleDevice(payload.device);
+				state.selectedBleDeviceId = '';
+				state.deviceActionPending = false;
+				showToast('Đã liên kết thiết bị', `${deviceId} đã được gán cho ${patient.name}.`, 'info');
+			} catch (error) {
+				state.deviceActionPending = false;
+				showToast('Không thể liên kết thiết bị', error.message, 'danger');
+			}
+		}
+
+		async function runBleDeviceAction(action) {
+			const patient = currentPatient();
+			const device = patient ? deviceForPatient(patient.id) : null;
+			if (!patient || !device || state.deviceActionPending) return;
+			state.deviceActionPending = true;
+			render();
+			try {
+				let url;
+				let method = 'POST';
+				if (action === 'start') url = `${BACKEND_BASE_URL}/api/ble/devices/${encodeURIComponent(device.deviceId)}/start-session`;
+				else if (action === 'end') url = `${BACKEND_BASE_URL}/api/ble/devices/${encodeURIComponent(device.deviceId)}/end-session`;
+				else {
+					url = `${BACKEND_BASE_URL}/api/patients/${encodeURIComponent(patient.id)}/device`;
+					method = 'DELETE';
+				}
+				const response = await fetch(url, { method });
+				const payload = await response.json();
+				if (!response.ok) throw new Error(payload.error || 'Không thể cập nhật thiết bị');
+				upsertBleDevice(payload.device);
+				state.deviceActionPending = false;
+				const title = action === 'start' ? 'Đã bắt đầu phiên' : action === 'end' ? 'Đã kết thúc phiên' : 'Đã gỡ thiết bị';
+				showToast(title, payload.message || 'Trạng thái thiết bị đã được cập nhật.', 'info');
+			} catch (error) {
+				state.deviceActionPending = false;
+				showToast('Không thể cập nhật thiết bị', error.message, 'danger');
+			}
+		}
+
 		function linePath(series, width, height, padding = 16) {
 			const min = Math.min(...series);
 			const max = Math.max(...series);
+			const isFlat = max === min;
 			const span = max - min || 1;
 			const innerWidth = width - padding * 2;
 			const innerHeight = height - padding * 2;
 			return series.map((value, index) => {
 				const x = padding + (index / (series.length - 1)) * innerWidth;
-				const y = padding + (1 - (value - min) / span) * innerHeight;
+				const y = isFlat ? height / 2 : padding + (1 - (value - min) / span) * innerHeight;
 				return [Number(x.toFixed(1)), Number(y.toFixed(1))];
 			});
 		}
 
 		function chartCard(title, series, unit, accent, extra = '') {
-			const validSeries = (!series || series.length < 2) ? [0, 0] : series;
 			const isEmpty = !series || series.length === 0;
+			const validSeries = isEmpty ? [0, 0] : series.length === 1 ? [series[0], series[0]] : series;
 			const width = 760;
 			const height = 240;
 			const points = linePath(validSeries, width, height, 24);
@@ -959,6 +1152,22 @@
 
 		function isCriticalFirmwareStatus(value) {
 			return normalizeFirmwareStatus(value) === 'ALERT';
+		}
+
+		function hasCriticalVitalSigns(patient) {
+			return hasMeasurementData(patient) && (patient.spo2 < 92 || patient.heartRate > 125);
+		}
+
+		function hasWarningVitalSigns(patient) {
+			return hasMeasurementData(patient) && (patient.spo2 < 94 || patient.heartRate > 110 || patient.heartRate < 55 || patient.temp > 37.8);
+		}
+
+		function isMedicalCritical(patient) {
+			return isCriticalFirmwareStatus(patient.status) || patient.fall === true || hasCriticalVitalSigns(patient);
+		}
+
+		function needsMedicalAttention(patient) {
+			return isMedicalCritical(patient) || isTransitionFirmwareStatus(patient.status) || hasWarningVitalSigns(patient);
 		}
 
 		function firmwareStatusLabel(value) {
@@ -1080,9 +1289,9 @@
 			const nav = [
 				['dashboard', 'Tổng quan', 'layout-dashboard'],
 				['patients', 'Bệnh nhân', 'users'],
-				['history', 'Lịch sử', 'chart-no-axes-combined'],
 				['settings', 'Thiết lập', 'settings-2'],
 			];
+			const patientSectionActive = ['patients', 'detail', 'history'].includes(state.view);
 			const monitoredPatients = patients.filter((patient) => isNormalFirmwareStatus(patient.status)).length;
 			const connected = state.mqttStatus === 'connected';
 			return `
@@ -1101,10 +1310,10 @@
 						<div class="px-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">Điều hướng</div>
 						<nav class="mt-3 space-y-1.5" aria-label="Điều hướng chính">
 							${nav.map(([key, label, icon]) => `
-								<button data-action="switch-view" data-view="${key}" style="${state.view === key || (key === 'patients' && state.view === 'detail') ? 'background: rgb(219 234 254); color: rgb(var(--color-primary-dark)); box-shadow: inset 3px 0 0 rgb(var(--color-primary));' : ''}" class="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${state.view === key || (key === 'patients' && state.view === 'detail') ? '' : 'text-slate-700 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800'}">
-									<span style="${state.view === key || (key === 'patients' && state.view === 'detail') ? 'background: rgba(255,255,255,.72); color: rgb(var(--color-primary-dark));' : ''}" class="flex h-9 w-9 items-center justify-center rounded-lg ${state.view === key || (key === 'patients' && state.view === 'detail') ? '' : 'bg-brand-50 text-brand-700 dark:bg-slate-800 dark:text-brand-300'}"><i data-lucide="${icon}" class="h-[18px] w-[18px]"></i></span>
+								<button data-action="switch-view" data-view="${key}" style="${state.view === key || (key === 'patients' && patientSectionActive) ? 'background: rgb(219 234 254); color: rgb(var(--color-primary-dark)); box-shadow: inset 3px 0 0 rgb(var(--color-primary));' : ''}" class="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${state.view === key || (key === 'patients' && patientSectionActive) ? '' : 'text-slate-700 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800'}">
+									<span style="${state.view === key || (key === 'patients' && patientSectionActive) ? 'background: rgba(255,255,255,.72); color: rgb(var(--color-primary-dark));' : ''}" class="flex h-9 w-9 items-center justify-center rounded-lg ${state.view === key || (key === 'patients' && patientSectionActive) ? '' : 'bg-brand-50 text-brand-700 dark:bg-slate-800 dark:text-brand-300'}"><i data-lucide="${icon}" class="h-[18px] w-[18px]"></i></span>
 									<span class="font-semibold">${label}</span>
-									${key === 'patients' && patients.length ? `<span style="${state.view === key || state.view === 'detail' ? 'background:rgba(255,255,255,.8);color:rgb(var(--color-primary-dark));' : ''}" class="ml-auto rounded-full ${state.view === key || state.view === 'detail' ? '' : 'bg-brand-100 text-brand-800 dark:bg-brand-500/20 dark:text-brand-200'} px-2 py-0.5 text-xs font-bold">${patients.length}</span>` : ''}
+									${key === 'patients' && patients.length ? `<span style="${patientSectionActive ? 'background:rgba(255,255,255,.8);color:rgb(var(--color-primary-dark));' : ''}" class="ml-auto rounded-full ${patientSectionActive ? '' : 'bg-brand-100 text-brand-800 dark:bg-brand-500/20 dark:text-brand-200'} px-2 py-0.5 text-xs font-bold">${patients.length}</span>` : ''}
 								</button>
 							`).join('')}
 						</nav>
@@ -1173,11 +1382,13 @@
 				`;
 			}
 			const attentionPatients = patients
-				.filter((patient) => !isNormalFirmwareStatus(patient.status) || patient.signalLost || patient.alertLevel === 'danger' || patient.alertLevel === 'warning')
+				.filter(needsMedicalAttention)
 				.sort((left, right) => (right.riskScore || 0) - (left.riskScore || 0));
-			const criticalPatients = attentionPatients.filter((patient) => isCriticalFirmwareStatus(patient.status) || patient.fall || patient.signalLost || patient.alertLevel === 'danger');
-			const offlineCount = patients.filter((patient) => patient.signalLost).length;
-			const safeCount = Math.max(0, patients.length - attentionPatients.length);
+			const criticalPatients = attentionPatients.filter(isMedicalCritical);
+			const linkedBleDevices = state.bleDevices.filter(device => device.patientId);
+			const bleAlertDevices = linkedBleDevices.filter(device => device.status === 'ALERT');
+			const offlineCount = linkedBleDevices.filter(device => device.status !== 'ONLINE').length;
+			const safeCount = patients.filter((patient) => !needsMedicalAttention(patient)).length;
 
 			return `
 				<div class="space-y-6">
@@ -1185,9 +1396,15 @@
 						<section class="ui-alert flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5" aria-label="Cảnh báo y tế khẩn cấp">
 							<div class="flex items-start gap-3">
 								<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white"><i data-lucide="triangle-alert" class="h-5 w-5"></i></div>
-								<div><div class="font-bold text-red-700 dark:text-red-300">${criticalPatients.length} cảnh báo cần xử lý ngay</div><div class="mt-1 text-sm text-slate-600 dark:text-slate-300">${escapeHtml(criticalPatients[0].name)} · ${firmwareStatusLabel(criticalPatients[0].status)}${criticalPatients.length > 1 ? ` và ${criticalPatients.length - 1} bệnh nhân khác` : ''}</div></div>
+								<div><div class="font-bold text-red-700 dark:text-red-300">${criticalPatients.length} cảnh báo y tế cần xử lý ngay</div><div class="mt-1 text-sm text-slate-600 dark:text-slate-300">${escapeHtml(criticalPatients[0].name)} · ${firmwareStatusLabel(criticalPatients[0].status)}${criticalPatients.length > 1 ? ` và ${criticalPatients.length - 1} bệnh nhân khác` : ''}</div></div>
 							</div>
 							<button data-action="open-patient" data-id="${criticalPatients[0].id}" class="ui-btn ui-btn-primary shrink-0 !border-red-600 !bg-red-600 hover:!bg-red-700"><i data-lucide="arrow-right" class="h-4 w-4"></i>Xem bệnh nhân</button>
+						</section>
+					` : ''}
+					${bleAlertDevices.length ? `
+						<section class="flex flex-col gap-4 rounded-[16px] border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+							<div class="flex items-start gap-3"><div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white"><i data-lucide="bluetooth-off" class="h-5 w-5"></i></div><div><div class="font-bold text-red-700">${bleAlertDevices.length} thiết bị mất BLE quá 180 giây</div><div class="mt-1 text-sm text-slate-600">Đây là cảnh báo kết nối thiết bị, tách biệt với cảnh báo sinh hiệu.</div></div></div>
+							${bleAlertDevices[0].patientId ? `<button data-action="open-patient" data-id="${escapeHtml(bleAlertDevices[0].patientId)}" class="ui-btn ui-btn-primary shrink-0 !border-red-600 !bg-red-600"><i data-lucide="arrow-right" class="h-4 w-4"></i>Xem bệnh nhân</button>` : ''}
 						</section>
 					` : ''}
 
@@ -1195,13 +1412,13 @@
 						${metricCard('Đang theo dõi', patients.length, 'Realtime', 'users-round', 'brand', 'Tổng bệnh nhân')}
 						${metricCard('Ổn định', safeCount, safeCount === patients.length ? 'Tất cả an toàn' : `${safeCount}/${patients.length}`, 'shield-check', 'safe', 'Không có cảnh báo')}
 						${metricCard('Cần chú ý', attentionPatients.length, criticalPatients.length ? `${criticalPatients.length} khẩn cấp` : 'Theo dõi', 'triangle-alert', criticalPatients.length ? 'danger' : 'warning', 'Cảnh báo đang hoạt động')}
-						${metricCard('Mất kết nối', offlineCount, offlineCount ? 'Kiểm tra thiết bị' : 'Không có', 'wifi-off', offlineCount ? 'danger' : 'safe', 'Thiết bị ngoại tuyến')}
+						${metricCard('Thiết bị offline', offlineCount, bleAlertDevices.length ? `${bleAlertDevices.length} cảnh báo` : offlineCount ? 'Chưa hoạt động / đang chờ' : 'Không có', 'bluetooth-off', bleAlertDevices.length ? 'danger' : offlineCount ? 'warning' : 'safe', 'Trạng thái từ ble_devices')}
 					</section>
 
 					<section>
 						<div class="card overflow-hidden">
 							<div class="flex items-center justify-between gap-4 border-b border-[rgb(var(--border))] px-5 py-4 sm:px-6">
-								<div><h2 class="text-lg font-bold text-slate-900 dark:text-white">Bệnh nhân cần chú ý</h2><p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Ưu tiên theo điểm rủi ro và cảnh báo thiết bị</p></div>
+								<div><h2 class="text-lg font-bold text-slate-900 dark:text-white">Bệnh nhân cần chú ý</h2><p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Ưu tiên theo sinh hiệu và trạng thái té ngã</p></div>
 								<button data-action="switch-view" data-view="patients" class="ui-btn ui-btn-secondary !min-h-9 !px-3 !py-2 text-sm">Xem tất cả<i data-lucide="arrow-right" class="h-4 w-4"></i></button>
 							</div>
 							<div class="divide-y divide-[rgb(var(--border))]">
@@ -1239,9 +1456,9 @@
 			const pageItems = visible.slice((page - 1) * state.pageSize, page * state.pageSize);
 			const summary = {
 				all: patients.length,
-				safe: patients.filter((patient) => isNormalFirmwareStatus(patient.status) && !patient.signalLost).length,
-				warning: patients.filter((patient) => isTransitionFirmwareStatus(patient.status)).length,
-				danger: patients.filter((patient) => isCriticalFirmwareStatus(patient.status) || patient.signalLost).length,
+				safe: patients.filter((patient) => !needsMedicalAttention(patient)).length,
+				warning: patients.filter((patient) => !isMedicalCritical(patient) && needsMedicalAttention(patient)).length,
+				danger: patients.filter(isMedicalCritical).length,
 			};
 			return `
 				<div class="space-y-5">
@@ -1260,7 +1477,7 @@
 							${statChip('Tổng bệnh nhân', summary.all, 'brand')}
 							${statChip('Ổn định', summary.safe, 'safe')}
 							${statChip('Cần theo dõi', summary.warning, 'warning')}
-							${statChip('Khẩn cấp / mất tín hiệu', summary.danger, 'danger')}
+							${statChip('Khẩn cấp y tế', summary.danger, 'danger')}
 						</div>
 					</section>
 
@@ -1325,7 +1542,7 @@
 											<td><span class="font-bold ${hasMeasurementData(patient) && (patient.heartRate > 110 || patient.heartRate < 55) ? 'text-red-600 dark:text-red-300' : 'text-slate-900 dark:text-white'}">${vitalText(patient, 'heartRate')}</span><span class="ml-1 text-xs font-medium text-slate-600">bpm</span></td>
 											<td><span class="font-bold ${hasMeasurementData(patient) && patient.spo2 < 94 ? 'text-red-600 dark:text-red-300' : 'text-slate-900 dark:text-white'}">${vitalText(patient, 'spo2', '%')}</span></td>
 											<td class="font-bold ${hasMeasurementData(patient) && patient.temp > 37.6 ? 'text-red-600 dark:text-red-300' : 'text-slate-900 dark:text-white'}">${vitalText(patient, 'temp', '°C')}</td>
-											<td>${statusBadge(patient.status)}${patient.signalLost ? '<div class="mt-1 text-xs font-bold text-red-600">Mất tín hiệu</div>' : ''}<div class="mt-1 text-xs font-medium text-slate-600 dark:text-slate-300">${hasMeasurementData(patient) ? `Rủi ro ${patient.riskScore || 0}/100` : 'Chưa có dữ liệu đo'}</div></td>
+											<td><div class="flex flex-col items-start gap-1.5">${statusBadge(patient.status)}${bleBadge(deviceForPatient(patient.id))}</div><div class="mt-1 text-xs font-medium text-slate-600 dark:text-slate-300">${hasMeasurementData(patient) ? `Rủi ro ${patient.riskScore || 0}/100` : 'Chưa có dữ liệu đo'}</div></td>
 											<td class="hidden lg:table-cell">
 												<div class="w-24">${hasMeasurementData(patient) ? progressBar(patient.battery, 100, patient.battery < 20 ? 'danger' : patient.battery < 45 ? 'warning' : 'safe') : progressBar(0, 100, 'warning')}</div>
 												<div class="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">${vitalText(patient, 'battery', '%')}</div>
@@ -1360,6 +1577,13 @@
 		function renderPatientDetail() {
 			const patient = currentPatient();
 			if (!patient) return `<div class="card rounded-[16px] p-6 ">Không có bệnh nhân được chọn.</div>`;
+			const wearable = deviceForPatient(patient.id);
+			const wearableMeta = bleStatusMeta(wearable);
+			const wearableStation = wearable?.stationId ? state.stations.find(station => station.stationId === wearable.stationId) : null;
+			const availableDevices = state.bleDevices.filter(device => !device.patientId);
+			const measurementSourceLabel = patient.measurementSource === 'BLE_GATEWAY'
+				? `BLE qua ${patient.sourceStationId || wearable?.stationId || 'trạm'}`
+				: patient.measurementSource === 'DIRECT_MQTT' ? 'MQTT trực tiếp' : 'Chưa có dữ liệu';
 			return `
 				<div class="space-y-5">
 					<div class="card p-5 sm:p-6">
@@ -1391,7 +1615,7 @@
 									['Battery', vitalText(patient, 'battery', '%'), hasMeasurementData(patient) && patient.battery < 20 ? 'danger' : hasMeasurementData(patient) && patient.battery < 45 ? 'warning' : 'safe'],
 								].map(([label, value, tone]) => `
 									<div class="card p-4">
-										<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">${label === 'Heart rate' ? 'Nhịp tim' : label === 'Temperature' ? 'Nhiệt độ' : label === 'Battery' ? 'Pin thiết bị' : label}</div>
+										<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">${label === 'Heart rate' ? 'Nhịp tim' : label === 'Temperature' ? 'Nhiệt độ' : label === 'Battery' ? (patient.measurementSource === 'BLE_GATEWAY' ? 'Pin thiết bị đeo' : 'Pin thiết bị đo') : label}</div>
 										<div class="mt-2 text-3xl font-bold ${tone === 'danger' ? 'text-red-600 dark:text-red-300' : tone === 'warning' ? 'text-amber-600 dark:text-amber-300' : tone === 'safe' ? 'text-emerald-600 dark:text-emerald-300' : 'text-brand-600 dark:text-brand-300'}">${value}</div>
 										<div class="mt-3">${progressBar(!hasMeasurementData(patient) ? 0 : label === 'Battery' ? patient.battery : label === 'SpO₂' ? patient.spo2 : label === 'Temperature' ? Math.round((patient.temp / 40) * 100) : clamp(patient.heartRate, 0, 150), label === 'Temperature' ? 100 : label === 'Heart rate' ? 150 : 100, tone === 'danger' ? 'danger' : tone === 'warning' ? 'warning' : 'safe')}</div>
 									</div>
@@ -1407,10 +1631,12 @@
 									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Tình trạng</div><div class="mt-1 font-bold text-slate-900 dark:text-white">${escapeHtml(patient.condition_summary || 'Chưa cập nhật')}</div></div>
 								</div>
 								<div class="mt-5 grid gap-4 sm:grid-cols-2">
-									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Kết nối BLE</div><div class="mt-2 font-bold ${patient.signalLost ? 'text-red-600 dark:text-red-300' : 'text-emerald-700 dark:text-emerald-300'}">${escapeHtml(patient.ble)}</div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Thiết bị đeo BLE</div><div class="mt-2">${bleBadge(wearable)}</div></div>
 									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Cường độ tín hiệu</div><div class="mt-2 font-bold text-slate-900 dark:text-white">${vitalText(patient, 'rssi', ' dBm')}</div></div>
-									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Pin thiết bị</div><div class="mt-2 font-bold text-slate-900 dark:text-white">${vitalText(patient, 'battery', '%')}</div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Pin từ gói đo</div><div class="mt-2 font-bold text-slate-900 dark:text-white">${vitalText(patient, 'battery', '%')}</div></div>
 									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Lần đo gần nhất</div><div class="mt-2 text-sm font-bold text-slate-900 dark:text-white">${formatDateTimeFull(latestMeasurementDate(patient))}</div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Nguồn dữ liệu</div><div class="mt-2 text-sm font-bold text-slate-900 dark:text-white">${escapeHtml(measurementSourceLabel)}</div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Thiết bị nguồn</div><div class="mt-2 text-sm font-bold text-slate-900 dark:text-white">${escapeHtml(patient.sourceDeviceId || (patient.measurementSource === 'DIRECT_MQTT' ? patient.id : '---'))}</div></div>
 								</div>
 								<div class="mt-5 rounded-[16px] border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/50">
 									<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Điểm rủi ro</div>
@@ -1423,6 +1649,25 @@
 									<summary class="cursor-pointer text-sm font-semibold text-slate-600 dark:text-slate-300">Công cụ kiểm thử</summary>
 									<div class="mt-3 flex flex-wrap gap-2"><button data-action="simulate-alert" class="ui-btn ui-btn-secondary text-sm !text-red-600"><i data-lucide="triangle-alert" class="h-4 w-4"></i>Mô phỏng cảnh báo</button><button data-action="open-toast" class="ui-btn ui-btn-secondary text-sm"><i data-lucide="bell" class="h-4 w-4"></i>Kiểm tra thông báo</button></div>
 								</details>
+							</div>
+							<div class="card p-5 sm:p-6">
+								<div class="flex items-start justify-between gap-3"><div><div class="text-sm font-semibold text-slate-600">Theo dõi BLE</div><div class="mt-1 text-xl font-bold text-slate-900">Thiết bị đeo của bệnh nhân</div></div>${bleBadge(wearable)}</div>
+								${wearable ? `
+									<div class="mt-5 grid gap-3 sm:grid-cols-2">
+										<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Device ID</div><div class="mt-1 font-bold text-slate-900">${escapeHtml(wearable.deviceId)}</div></div>
+										<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Trạm</div><div class="mt-1 font-bold text-slate-900">${escapeHtml(wearable.stationId || 'Chưa xác định')} · ${wearableStation?.status === 'ONLINE' ? 'Online' : 'Offline'}</div></div>
+										<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">RSSI BLE</div><div class="mt-1 font-bold text-slate-900">${wearable.rssi === null ? '---' : `${wearable.rssi} dBm`}</div></div>
+										<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="text-xs font-semibold text-slate-600">Pin thiết bị đeo</div><div class="mt-1 font-bold text-slate-900">${wearable.battery === null ? '---' : `${wearable.battery}%`}</div></div>
+									</div>
+									<div class="mt-4 rounded-xl border border-[rgb(var(--border))] p-4"><div class="font-semibold text-slate-800">${wearableMeta.detail}</div><div class="mt-1 text-xs text-slate-600">Lần thấy BLE: ${wearable.lastBleSeen ? formatDateTimeFull(wearable.lastBleSeen) : 'Chưa xuất hiện trong ngày'}</div></div>
+									<div class="mt-5 flex flex-wrap gap-2">
+										${wearable.sessionActive && !wearable.sessionBlocked ? '<button data-action="end-ble-session" class="ui-btn ui-btn-secondary text-sm"><i data-lucide="square" class="h-4 w-4"></i>Kết thúc phiên</button>' : '<button data-action="start-ble-session" class="ui-btn ui-btn-primary text-sm"><i data-lucide="play" class="h-4 w-4"></i>Bắt đầu phiên</button>'}
+										<button data-action="unlink-ble-device" class="ui-btn ui-btn-secondary text-sm !text-red-600"><i data-lucide="unlink" class="h-4 w-4"></i>Gỡ liên kết</button>
+									</div>
+								` : `
+									<div class="mt-5 rounded-xl bg-[rgb(var(--panel-2))] p-4 text-sm text-slate-700">Thiết bị chưa từng khởi động trong ngày chỉ hiển thị offline và không tạo cảnh báo.</div>
+									${availableDevices.length ? `<div class="mt-4 flex flex-col gap-3 sm:flex-row"><select data-bind="selectedBleDeviceId" class="min-w-0 flex-1 border px-4 py-3"><option value="">Chọn thiết bị trạm đã phát hiện</option>${availableDevices.map(device => `<option value="${escapeHtml(device.deviceId)}" ${state.selectedBleDeviceId === device.deviceId ? 'selected' : ''}>${escapeHtml(device.deviceId)} · ${bleStatusMeta(device).label}</option>`).join('')}</select><button data-action="link-ble-device" class="ui-btn ui-btn-primary" ${!state.selectedBleDeviceId || state.deviceActionPending ? 'disabled' : ''}><i data-lucide="link" class="h-4 w-4"></i>Liên kết</button></div>` : '<div class="mt-4 text-sm font-semibold text-slate-600">Chưa có thiết bị MEDPULSE-* nào được trạm phát hiện.</div>'}
+								`}
 							</div>
 						</div>
 					</div>
@@ -1459,6 +1704,8 @@
 							</div>
 						</div>
 					</div>
+					${state.historyLoading ? '<div class="card p-5 text-sm font-semibold text-brand-700"><span class="inline-flex items-center gap-2"><i data-lucide="loader-circle" class="h-4 w-4 animate-spin"></i>Đang tải dữ liệu lịch sử từ database...</span></div>' : ''}
+					${state.historyError ? `<div class="ui-alert p-4 text-sm font-semibold text-red-700">${escapeHtml(state.historyError)}</div>` : ''}
 					<div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
 						<div class="space-y-6">
 							${chartCard('Nhịp tim', heartSeries, 'bpm', 'text-brand-600 dark:text-brand-300', 'Dữ liệu realtime')}
@@ -1577,6 +1824,7 @@
 		}
 
 		function renderSettings() {
+			const onlineStations = state.stations.filter(station => station.status === 'ONLINE').length;
 			return `
 				<div class="space-y-5">
 					<div class="card p-5 sm:p-6">
@@ -1604,7 +1852,7 @@
 								<div class="mt-5 space-y-3">
 									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="flex items-center justify-between"><span class="font-semibold text-slate-700 dark:text-slate-200">MQTT / WebSocket</span><span class="ui-badge ${state.mqttStatus === 'connected' ? 'ui-badge-safe' : 'ui-badge-warning'}">${state.mqttStatus === 'connected' ? 'Đã kết nối' : 'Gián đoạn'}</span></div></div>
 									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="flex items-center justify-between"><span class="font-semibold text-slate-700 dark:text-slate-200">Wi-Fi</span><span class="ui-badge ${state.wifiStatus === 'stable' ? 'ui-badge-safe' : 'ui-badge-warning'}">${state.wifiStatus === 'stable' ? 'Ổn định' : 'Không ổn định'}</span></div></div>
-									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="flex items-center justify-between"><span class="font-semibold text-slate-700 dark:text-slate-200">Trạm kiosk</span><span class="ui-badge ${state.kioskStatus === 'online' ? 'ui-badge-safe' : 'ui-badge-warning'}">${state.kioskStatus === 'online' ? 'Trực tuyến' : 'Cần kiểm tra'}</span></div></div>
+									<div class="rounded-xl bg-[rgb(var(--panel-2))] p-4"><div class="flex items-center justify-between"><span class="font-semibold text-slate-700 dark:text-slate-200">Trạm BLE</span><span class="ui-badge ${onlineStations > 0 ? 'ui-badge-safe' : 'ui-badge-warning'}">${onlineStations}/${state.stations.length} online</span></div>${state.stations.map(station => `<div class="mt-2 flex items-center justify-between text-xs text-slate-600"><span>${escapeHtml(station.stationId)}</span><span>${station.status === 'ONLINE' ? 'Đang gửi heartbeat' : 'Mất heartbeat'}</span></div>`).join('')}</div>
 								</div>
 							</div>
 						</div>
@@ -1620,7 +1868,7 @@
 							</div>
 							<div class="card p-5">
 								<div class="flex items-center justify-between gap-4">
-									<div><div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Cảnh báo y tế</div><div class="mt-1 text-xl font-bold text-slate-900 dark:text-white">Âm thanh cảnh báo</div><p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Phát âm báo khi có té ngã hoặc mất tín hiệu.</p></div>
+									<div><div class="text-sm font-semibold text-slate-600 dark:text-slate-300">Thông báo</div><div class="mt-1 text-xl font-bold text-slate-900 dark:text-white">Âm thanh cảnh báo</div><p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Phát âm báo khi có té ngã hoặc thiết bị BLE mất quá 180 giây.</p></div>
 									<button data-action="toggle-sound" class="ui-btn ${state.soundEnabled ? 'ui-btn-primary' : 'ui-btn-secondary'} shrink-0 text-sm"><i data-lucide="${state.soundEnabled ? 'volume-2' : 'volume-x'}" class="h-4 w-4"></i>${state.soundEnabled ? 'Đang bật' : 'Đang tắt'}</button>
 								</div>
 							</div>
@@ -1636,7 +1884,7 @@
 				dashboard: ['Tổng quan', 'Tình trạng bệnh nhân và cảnh báo cần chú ý'],
 				patients: ['Bệnh nhân', 'Danh sách bệnh nhân đang được theo dõi'],
 				detail: [patient ? escapeHtml(patient.name) : 'Chi tiết bệnh nhân', 'Sinh hiệu và trạng thái theo thời gian thực'],
-				history: ['Lịch sử dữ liệu', 'Theo dõi diễn biến sinh hiệu theo thời gian'],
+				history: [patient ? `Lịch sử · ${escapeHtml(patient.name)}` : 'Lịch sử bệnh nhân', 'Biểu đồ và diễn biến sinh hiệu theo thời gian'],
 				register: ['Đăng ký bệnh nhân', 'Liên kết RFID mới với hồ sơ bệnh nhân'],
 				settings: ['Thiết lập', 'Cấu hình trải nghiệm giám sát'],
 			}[state.view] || ['Tổng quan', 'Tình trạng bệnh nhân và cảnh báo cần chú ý'];
@@ -1695,7 +1943,6 @@
 			const profileMenu = state.profileOpen ? `
 				<div class="fixed right-4 top-20 z-50 w-[290px] rounded-[16px] border border-slate-200 bg-white p-3  dark:border-slate-800 dark:bg-slate-950  sm:right-6 lg:right-8">
 					<button data-action="switch-view" data-view="settings" class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-200 dark:hover:bg-slate-900"><i data-lucide="settings-2" class="h-4 w-4"></i>Cài đặt</button>
-					<button data-action="switch-view" data-view="history" class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><i data-lucide="history" class="h-4 w-4"></i> Lịch sử</button>
 					<div class="my-2 h-px bg-slate-200 dark:bg-slate-800"></div>
 					<button data-action="logout" class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"><i data-lucide="log-out" class="h-4 w-4"></i>Đăng xuất</button>
 				</div>
@@ -1731,7 +1978,7 @@
 							<div class="flex-1">
 								<div class="text-sm font-semibold uppercase tracking-[0.16em] text-red-600">Cảnh báo khẩn cấp</div>
 								<div class="mt-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">${state.alertModal.patient.name}</div>
-								<div class="mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">${state.alertModal.type === 'critical' ? 'Phát hiện sự kiện khẩn cấp: té ngã, mất tín hiệu hoặc sinh hiệu bất thường.' : 'Cảnh báo cần kiểm tra ngay.'}</div>
+								<div class="mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">${state.alertModal.type === 'critical' ? 'Phát hiện sự kiện y tế khẩn cấp: té ngã hoặc sinh hiệu bất thường.' : 'Cảnh báo cần kiểm tra ngay.'}</div>
 								<div class="mt-4 grid gap-3 sm:grid-cols-3">
 									<div class="rounded-[12px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold text-red-600">Thời gian</div><div class="mt-2 font-bold">${formatTime(state.alertModal.time)}</div></div>
 									<div class="rounded-[12px] bg-red-50 p-4 dark:bg-red-500/10"><div class="text-xs font-bold text-red-600">Trạm</div><div class="mt-2 font-bold">${state.alertModal.kiosk}</div></div>
@@ -1931,14 +2178,28 @@
 						state.notificationsOpen = false;
 						state.sidebarOpen = window.innerWidth >= 1024;
 						if (view === 'detail' && !state.selectedPatientId && patients.length > 0) state.selectedPatientId = patients[0].id;
-						render();
+						if (view === 'history') loadSelectedPatientHistory();
+						else render();
 					}
 					if (action === 'open-patient' && id) {
 						state.selectedPatientId = id;
+						state.selectedBleDeviceId = '';
 						state.view = 'detail';
 						state.profileOpen = false;
 						state.notificationsOpen = false;
 						render();
+					}
+					if (action === 'link-ble-device') {
+						linkSelectedBleDevice();
+					}
+					if (action === 'start-ble-session') {
+						runBleDeviceAction('start');
+					}
+					if (action === 'end-ble-session') {
+						runBleDeviceAction('end');
+					}
+					if (action === 'unlink-ble-device') {
+						runBleDeviceAction('unlink');
 					}
 					if (action === 'open-registration' && id) {
 						openPatientRegistration(id);
@@ -1989,7 +2250,7 @@
 					}
 					if (action === 'set-range' && range) {
 						state.historyRange = range;
-						render();
+						loadSelectedPatientHistory();
 					}
 					if (action === 'logout') {
 						state.authed = false;
@@ -2053,12 +2314,11 @@
 
 
 		// WebSocket globals (phải ở scope ngoài để setInterval truy cập được)
-		const BACKEND_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-			? 'http://localhost:5000'
-			: 'https://medpulse-dashboard.onrender.com';
-		const BACKEND_WS_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+		const IS_LOCAL_BACKEND = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+		const BACKEND_BASE_URL = IS_LOCAL_BACKEND ? 'http://localhost:5000' : window.location.origin;
+		const BACKEND_WS_URL = IS_LOCAL_BACKEND
 			? 'ws://localhost:5000'
-			: 'wss://medpulse-dashboard.onrender.com';
+			: `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
 		let socket = null;
 		let reconnectTimer = null;
 
@@ -2128,12 +2388,18 @@
 						zone: (remotePatient.status || remotePatient.current_status || 'IDLE') === 'IDLE' ? 'Within zone' : 'Alert zone',
 						battery: remotePatient.battery || 100,
 						rssi: remotePatient.rssi || -60,
-						ble: remotePatient.signalLost ? 'Mất tín hiệu' : (remotePatient.battery < 20 ? 'Pin yếu' : 'Ổn định'),
+						ble: remotePatient.signalLost ? 'Không có gói tin mới' : (remotePatient.battery < 20 ? 'Pin trạm yếu' : 'Đã nhận dữ liệu trạm'),
 						age: remotePatient.age || 0,
 						gender: remotePatient.gender || '',
 						bloodType: remotePatient.bloodType || 'O+',
 					};
 				});
+
+				try {
+					await fetchBleInfrastructure();
+				} catch (bleError) {
+					console.error('Không thể đồng bộ BLE/stations:', bleError);
+				}
 
 				console.log(`🟢 Loaded ${patients.length} patients into dashboard`);
 				state.loading = false;
@@ -2175,6 +2441,42 @@
 				socket.onmessage = (event) => {
 				try {
 					const rawPayload = JSON.parse(event.data);
+
+					if (rawPayload.type === 'BLE_DEVICES_SYNC') {
+						state.bleDevices = [];
+						(rawPayload.data || []).forEach(upsertBleDevice);
+						render();
+						return;
+					}
+
+					if (['BLE_DEVICE_UPDATE', 'BLE_DEVICE_SEEN', 'BLE_DEVICE_LOST', 'BLE_DEVICE_ALERT', 'BLE_SESSION_ENDED', 'BLE_SESSION_STARTED', 'BLE_VITALS_ACCEPTED', 'BLE_VITALS_REJECTED'].includes(rawPayload.type)) {
+						const previous = state.bleDevices.find(item => item.deviceId === rawPayload.data?.deviceId);
+						const device = upsertBleDevice(rawPayload.data);
+						if (device && rawPayload.type === 'BLE_DEVICE_ALERT' && previous?.status !== 'ALERT') {
+							playAlertTone();
+							showToast('Cảnh báo mất kết nối thiết bị', `${device.patientName || device.patientId || device.deviceId} đã mất BLE quá 180 giây.`, 'danger');
+						} else if (device && rawPayload.type === 'BLE_VITALS_REJECTED') {
+							showToast('Gói BLE chưa được lưu', device.lastEvent === 'VITALS_REJECTED_UNASSIGNED'
+								? `${device.deviceId} chưa được gán cho bệnh nhân.`
+								: `Phiên đo của ${device.deviceId} chưa hoạt động.`, 'warning');
+						} else {
+							render();
+						}
+						return;
+					}
+
+					if (rawPayload.type === 'STATIONS_SYNC') {
+						state.stations = [];
+						(rawPayload.data || []).forEach(upsertStation);
+						render();
+						return;
+					}
+
+					if (rawPayload.type === 'STATION_UPDATE') {
+						upsertStation(rawPayload.data);
+						render();
+						return;
+					}
 
 					if (rawPayload.type === 'PENDING_REGISTRATIONS') {
 						state.pendingRegistrations = [];
@@ -2267,7 +2569,7 @@
 						zone: firmwareStatus === 'IDLE' ? 'Within zone' : 'Alert zone',
 						battery: liveData.battery || 100,
 						rssi: liveData.rssi || -60,
-						ble: liveData.signalLost ? 'Mất tín hiệu' : 'Ổn định',
+						ble: liveData.signalLost ? 'Không có gói tin mới' : 'Đang nhận dữ liệu trạm',
 						age: liveData.age || 0,
 						gender: liveData.gender || '',
 						};
@@ -2293,18 +2595,18 @@
 						lastUpdate: new Date(liveUpdateAt),
 						lastMeasurementAt: incomingMeasurementAt || oldData.lastMeasurementAt || null,
 						hasRealData: incomingHasMeasurement || oldData.hasRealData === true,
-						alert: firmwareStatus !== 'IDLE' || !!liveData.signalLost,
+						alert: firmwareStatus !== 'IDLE',
 						fall: firmwareStatus === 'ALERT',
 						safe: firmwareStatus === 'IDLE',
 						zone: firmwareStatus === 'IDLE' ? 'Within zone' : 'Alert zone',
-						ble: liveData.signalLost ? 'Mất tín hiệu' : ((liveData.battery || oldData.battery) < 20 ? 'Pin yếu' : 'Ổn định'),
+						ble: liveData.signalLost ? 'Không có gói tin mới' : ((liveData.battery || oldData.battery) < 20 ? 'Pin trạm yếu' : 'Đang nhận dữ liệu trạm'),
 						};
 						if (firmwareStatus === 'ALERT') {
 						enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 20000 });
 						} else if (isTransitionFirmwareStatus(firmwareStatus)) {
 						enqueueAlert(patients[index], 'warning', { showModal: false, cooldownMs: 30000 });
 						} else if (liveData.signalLost) {
-						enqueueAlert(patients[index], 'critical', { showModal: true, cooldownMs: 30000 });
+						showToast('Không có dữ liệu mới từ trạm', `${patients[index].name} chưa gửi thêm gói MQTT.`, 'warning');
 						}
 						}
 						render();

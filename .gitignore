@@ -2,3 +2,4 @@
 .env
 server.out.log
 server.err.log
+tram_sketch/station_config.h

@@ -1,5 +1,10 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <BLEDevice.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
+#include "station_config.h"
+#include <esp_arduino_version.h>
 
 #include <Wire.h>
 #include <Adafruit_MLX90614.h>
@@ -11,8 +16,8 @@
 // WIFI CONFIG
 // ==================================================
 // Lưu ý: ESP32 chỉ dùng WiFi 2.4GHz, không dùng được 5GHz.
-const char* WIFI_SSID = "Thuy van 1";
-const char* WIFI_PASS = "Saigonact0209";
+const char* WIFI_SSID = MEDPULSE_WIFI_SSID;
+const char* WIFI_PASS = MEDPULSE_WIFI_PASSWORD;
 
 // Nếu chạy Wokwi thì dùng:
 // const char* WIFI_SSID = "Wokwi-GUEST";
@@ -21,14 +26,70 @@ const char* WIFI_PASS = "Saigonact0209";
 // ==================================================
 // MQTT CONFIG
 // ==================================================
-const char* MQTT_HOST = "broker.hivemq.com";
-const int   MQTT_PORT = 1883;
+const char* MQTT_HOST = MEDPULSE_MQTT_HOST;
+const int   MQTT_PORT = MEDPULSE_MQTT_PORT;
 
 // Backend đang nghe: medpulse_duy/+/vitals
-const char* MQTT_ROOT_TOPIC = "medpulse_duy";
+const char* MQTT_ROOT_TOPIC = MEDPULSE_MQTT_ROOT_TOPIC;
+
+// ==================================================
+// BLE GATEWAY PROTOCOL
+// ==================================================
+// Thiết bị đeo tương lai phải phát BLE Advertising với tên:
+//   MEDPULSE-<DEVICE_ID>  (ví dụ MEDPULSE-MINI01)
+// Manufacturer data hiện diện (5 byte): 4D 50 01 00 <battery 0..100>
+// Manufacturer data sinh hiệu (12 byte):
+//   4D 50 01 10 <seq> <battery> <heartRate> <spo2> <tempLE16 x10> <flags> 00
+// flags: bit0=fall, bit1=charging, bit2=measurementValid.
+// Trạm chỉ báo SEEN/LOST. Backend mới là nơi chờ 180 giây trước khi cảnh báo.
+const char* STATION_ID = MEDPULSE_STATION_ID;
+const char* BLE_DEVICE_NAME_PREFIX = "MEDPULSE-";
+const unsigned long BLE_LOCAL_LOST_MS = 15000;
+const unsigned long BLE_SEEN_PUBLISH_INTERVAL_MS = 30000;
+const unsigned long STATION_HEARTBEAT_INTERVAL_MS = 30000;
+const uint32_t BLE_SCAN_CYCLE_SECONDS = 10;
+const uint8_t MAX_TRACKED_BLE_DEVICES = 8;
+const uint8_t BLE_DEVICE_ID_MAX_LENGTH = 24;
 
 WiFiClient espClient;
 PubSubClient mqtt(espClient);
+
+struct TrackedBleDevice {
+  bool used;
+  bool online;
+  bool pendingSeen;
+  bool pendingLost;
+  char deviceId[BLE_DEVICE_ID_MAX_LENGTH + 1];
+  int rssi;
+  int battery;
+  unsigned long lastSeenMs;
+  unsigned long lastPublishedMs;
+  bool pendingVitals;
+  bool hasVitalsSequence;
+  uint8_t vitalsSequence;
+  uint8_t heartRate;
+  uint8_t spo2;
+  int16_t tempX10;
+  bool fallDetected;
+  bool charging;
+};
+
+struct BleAdvertisementFrame {
+  int battery;
+  bool hasVitals;
+  uint8_t sequence;
+  uint8_t heartRate;
+  uint8_t spo2;
+  int16_t tempX10;
+  bool fallDetected;
+  bool charging;
+};
+
+TrackedBleDevice trackedBleDevices[MAX_TRACKED_BLE_DEVICES] = {};
+portMUX_TYPE bleStateMux = portMUX_INITIALIZER_UNLOCKED;
+BLEScan* bleScan = nullptr;
+volatile bool bleScanRestartRequested = false;
+unsigned long lastStationHeartbeatMs = 0;
 
 // ==================================================
 // I2C: MAX30102 + MLX90614
@@ -397,6 +458,373 @@ void ensureMQTT() {
 }
 
 // ==================================================
+// BLE SCANNER + MQTT DEVICE PRESENCE
+// ==================================================
+bool isValidBleDeviceId(const String& deviceId) {
+  if (deviceId.length() == 0 || deviceId.length() > BLE_DEVICE_ID_MAX_LENGTH) {
+    return false;
+  }
+
+  for (size_t i = 0; i < deviceId.length(); i++) {
+    char c = deviceId.charAt(i);
+    bool allowed = (c >= 'A' && c <= 'Z')
+                || (c >= 'a' && c <= 'z')
+                || (c >= '0' && c <= '9')
+                || c == '-'
+                || c == '_';
+    if (!allowed) return false;
+  }
+  return true;
+}
+
+bool decodeMedPulseFrame(BLEAdvertisedDevice& advertisedDevice, BleAdvertisementFrame& frame) {
+  frame = {};
+  frame.battery = -1;
+  if (!advertisedDevice.haveManufacturerData()) return true;
+
+  uint8_t raw[12] = {};
+  size_t dataLength = 0;
+
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  String data = advertisedDevice.getManufacturerData();
+  dataLength = data.length();
+  for (size_t i = 0; i < dataLength && i < sizeof(raw); i++) raw[i] = static_cast<uint8_t>(data.charAt(i));
+#else
+  std::string data = advertisedDevice.getManufacturerData();
+  dataLength = data.size();
+  for (size_t i = 0; i < dataLength && i < sizeof(raw); i++) raw[i] = static_cast<uint8_t>(data[i]);
+#endif
+
+  if (dataLength < 4 || raw[0] != 0x4D || raw[1] != 0x50 || raw[2] != 0x01) return false;
+
+  // Tương thích frame pin 4 byte cũ: 4D 50 01 <battery>.
+  if (dataLength == 4) {
+    if (raw[3] > 100) return false;
+    frame.battery = raw[3];
+    return true;
+  }
+
+  const uint8_t frameType = raw[3];
+  if (frameType == 0x00) {
+    if (dataLength < 5 || raw[4] > 100) return false;
+    frame.battery = raw[4];
+    return true;
+  }
+
+  if (frameType != 0x10 || dataLength < 12) return false;
+  const int16_t tempX10 = static_cast<int16_t>(raw[8] | (static_cast<uint16_t>(raw[9]) << 8));
+  const bool measurementValid = (raw[10] & 0x04) != 0;
+  if (raw[5] > 100 || raw[6] < 25 || raw[6] > 240 || raw[7] < 50 || raw[7] > 100
+      || tempX10 < 250 || tempX10 > 500 || !measurementValid) return false;
+
+  frame.battery = raw[5];
+  frame.hasVitals = true;
+  frame.sequence = raw[4];
+  frame.heartRate = raw[6];
+  frame.spo2 = raw[7];
+  frame.tempX10 = tempX10;
+  frame.fallDetected = (raw[10] & 0x01) != 0;
+  frame.charging = (raw[10] & 0x02) != 0;
+  return true;
+}
+
+void recordBleAdvertisement(const String& deviceId, int rssi, const BleAdvertisementFrame& frame) {
+  const unsigned long now = millis();
+  int targetIndex = -1;
+  int freeIndex = -1;
+
+  portENTER_CRITICAL(&bleStateMux);
+  for (uint8_t i = 0; i < MAX_TRACKED_BLE_DEVICES; i++) {
+    if (trackedBleDevices[i].used) {
+      if (strncmp(trackedBleDevices[i].deviceId, deviceId.c_str(), BLE_DEVICE_ID_MAX_LENGTH) == 0) {
+        targetIndex = i;
+        break;
+      }
+    } else if (freeIndex < 0) {
+      freeIndex = i;
+    }
+  }
+
+  if (targetIndex < 0) targetIndex = freeIndex;
+  if (targetIndex >= 0) {
+    TrackedBleDevice& device = trackedBleDevices[targetIndex];
+    const bool firstSeenOrRecovered = !device.used || !device.online;
+
+    if (!device.used) {
+      memset(&device, 0, sizeof(device));
+      device.used = true;
+      device.battery = -1;
+      strncpy(device.deviceId, deviceId.c_str(), BLE_DEVICE_ID_MAX_LENGTH);
+      device.deviceId[BLE_DEVICE_ID_MAX_LENGTH] = '\0';
+    }
+
+    device.online = true;
+    device.rssi = rssi;
+    if (frame.battery >= 0) device.battery = frame.battery;
+    device.lastSeenMs = now;
+    device.pendingLost = false;
+
+    if (frame.hasVitals && (!device.hasVitalsSequence || device.vitalsSequence != frame.sequence)) {
+      device.hasVitalsSequence = true;
+      device.vitalsSequence = frame.sequence;
+      device.heartRate = frame.heartRate;
+      device.spo2 = frame.spo2;
+      device.tempX10 = frame.tempX10;
+      device.fallDetected = frame.fallDetected;
+      device.charging = frame.charging;
+      device.pendingVitals = true;
+    }
+
+    if (firstSeenOrRecovered || now - device.lastPublishedMs >= BLE_SEEN_PUBLISH_INTERVAL_MS) {
+      device.pendingSeen = true;
+    }
+  }
+  portEXIT_CRITICAL(&bleStateMux);
+
+  if (targetIndex < 0) {
+    Serial.println("[BLE] Bang theo doi da day, bo qua thiet bi moi.");
+  }
+}
+
+class MedPulseAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
+  void onResult(BLEAdvertisedDevice advertisedDevice) override {
+    if (!advertisedDevice.haveName()) return;
+
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+    String advertisedName = advertisedDevice.getName();
+#else
+    String advertisedName = advertisedDevice.getName().c_str();
+#endif
+    if (!advertisedName.startsWith(BLE_DEVICE_NAME_PREFIX)) return;
+
+    String deviceId = advertisedName.substring(strlen(BLE_DEVICE_NAME_PREFIX));
+    deviceId.trim();
+    if (!isValidBleDeviceId(deviceId)) return;
+
+    BleAdvertisementFrame frame;
+    if (!decodeMedPulseFrame(advertisedDevice, frame)) return;
+    recordBleAdvertisement(deviceId, advertisedDevice.getRSSI(), frame);
+  }
+};
+
+MedPulseAdvertisedDeviceCallbacks bleAdvertisedDeviceCallbacks;
+
+void onBleScanComplete(BLEScanResults) {
+  // Khởi động lại ở loop chính để giải phóng kết quả scan cũ và tránh tăng RAM lâu dài.
+  bleScanRestartRequested = true;
+}
+
+void initializeBleScanner() {
+  Serial.println("[BLE] Khoi tao scanner...");
+  BLEDevice::init(STATION_ID);
+  bleScan = BLEDevice::getScan();
+  bleScan->setAdvertisedDeviceCallbacks(&bleAdvertisedDeviceCallbacks, true);
+  bleScan->setActiveScan(true);
+  bleScan->setInterval(100);
+  bleScan->setWindow(80);
+
+  if (bleScan->start(BLE_SCAN_CYCLE_SECONDS, onBleScanComplete, false)) {
+    Serial.print("[BLE] Dang quet thiet bi co prefix: ");
+    Serial.println(BLE_DEVICE_NAME_PREFIX);
+  } else {
+    Serial.println("[BLE] Khong the bat dau scan.");
+  }
+}
+
+void maintainBleScanner() {
+  if (!bleScan || !bleScanRestartRequested) return;
+  bleScanRestartRequested = false;
+  bleScan->clearResults();
+  if (!bleScan->start(BLE_SCAN_CYCLE_SECONDS, onBleScanComplete, false)) {
+    Serial.println("[BLE] Restart scan failed, se thu lai.");
+    bleScanRestartRequested = true;
+  }
+}
+
+bool publishBlePresenceEvent(const TrackedBleDevice& device, const char* eventName) {
+  ensureWiFi();
+  ensureMQTT();
+  if (!mqtt.connected()) return false;
+
+  String topic = String(MQTT_ROOT_TOPIC) + "/stations/" + STATION_ID + "/ble";
+  char payload[384];
+  snprintf(payload, sizeof(payload),
+           "{"
+           "\"protocolVersion\":1,"
+           "\"stationId\":\"%s\","
+           "\"deviceId\":\"%s\","
+           "\"event\":\"%s\","
+           "\"bleStatus\":\"%s\","
+           "\"rssi\":%d,"
+           "\"battery\":%d,"
+           "\"stationUptimeMs\":%lu,"
+           "\"lastSeenAgoMs\":%lu"
+           "}",
+           STATION_ID,
+           device.deviceId,
+           eventName,
+           strcmp(eventName, "LOST") == 0 ? "DISCONNECTED" : "CONNECTED",
+           device.rssi,
+           device.battery,
+           millis(),
+           millis() - device.lastSeenMs);
+
+  bool ok = mqtt.publish(topic.c_str(), payload, false);
+  Serial.print("[BLE MQTT] ");
+  Serial.print(eventName);
+  Serial.print(" ");
+  Serial.print(device.deviceId);
+  Serial.println(ok ? " -> OK" : " -> FAILED");
+  return ok;
+}
+
+void handleBlePresenceEvents() {
+  const unsigned long now = millis();
+
+  for (uint8_t i = 0; i < MAX_TRACKED_BLE_DEVICES; i++) {
+    TrackedBleDevice snapshot = {};
+    bool shouldPublishSeen = false;
+    bool shouldPublishLost = false;
+
+    portENTER_CRITICAL(&bleStateMux);
+    TrackedBleDevice& device = trackedBleDevices[i];
+    if (device.used) {
+      if (device.online && now - device.lastSeenMs >= BLE_LOCAL_LOST_MS) {
+        device.online = false;
+        device.pendingSeen = false;
+        device.pendingLost = true;
+      }
+
+      shouldPublishLost = device.pendingLost;
+      shouldPublishSeen = !shouldPublishLost && device.pendingSeen;
+      snapshot = device;
+      if (shouldPublishLost) device.pendingLost = false;
+      if (shouldPublishSeen) device.pendingSeen = false;
+    }
+    portEXIT_CRITICAL(&bleStateMux);
+
+    if (!snapshot.used || (!shouldPublishSeen && !shouldPublishLost)) continue;
+
+    const char* eventName = shouldPublishLost ? "LOST" : "SEEN";
+    if (publishBlePresenceEvent(snapshot, eventName)) {
+      portENTER_CRITICAL(&bleStateMux);
+      if (trackedBleDevices[i].used
+          && strncmp(trackedBleDevices[i].deviceId, snapshot.deviceId, BLE_DEVICE_ID_MAX_LENGTH) == 0) {
+        trackedBleDevices[i].lastPublishedMs = now;
+      }
+      portEXIT_CRITICAL(&bleStateMux);
+    } else {
+      portENTER_CRITICAL(&bleStateMux);
+      if (trackedBleDevices[i].used
+          && strncmp(trackedBleDevices[i].deviceId, snapshot.deviceId, BLE_DEVICE_ID_MAX_LENGTH) == 0) {
+        if (shouldPublishLost) trackedBleDevices[i].pendingLost = true;
+        if (shouldPublishSeen) trackedBleDevices[i].pendingSeen = true;
+      }
+      portEXIT_CRITICAL(&bleStateMux);
+    }
+  }
+}
+
+bool publishBleVitals(const TrackedBleDevice& device) {
+  ensureWiFi();
+  ensureMQTT();
+  if (!mqtt.connected()) return false;
+
+  String topic = String(MQTT_ROOT_TOPIC) + "/stations/" + STATION_ID
+               + "/devices/" + device.deviceId + "/vitals";
+  char payload[512];
+  snprintf(payload, sizeof(payload),
+           "{"
+           "\"protocolVersion\":1,"
+           "\"stationId\":\"%s\","
+           "\"deviceId\":\"%s\","
+           "\"sequence\":%u,"
+           "\"heartRate\":%u,"
+           "\"spo2\":%u,"
+           "\"temp\":%.1f,"
+           "\"battery\":%d,"
+           "\"charging\":%s,"
+           "\"fallDetected\":%s,"
+           "\"firmwareStatus\":\"%s\","
+           "\"rssi\":%d,"
+           "\"stationUptimeMs\":%lu"
+           "}",
+           STATION_ID,
+           device.deviceId,
+           device.vitalsSequence,
+           device.heartRate,
+           device.spo2,
+           device.tempX10 / 10.0f,
+           device.battery,
+           device.charging ? "true" : "false",
+           device.fallDetected ? "true" : "false",
+           device.fallDetected ? "ALERT" : "IDLE",
+           device.rssi,
+           millis());
+
+  const bool ok = mqtt.publish(topic.c_str(), payload, false);
+  Serial.print("[BLE VITALS MQTT] ");
+  Serial.print(device.deviceId);
+  Serial.print(" seq=");
+  Serial.print(device.vitalsSequence);
+  Serial.println(ok ? " -> OK" : " -> FAILED");
+  return ok;
+}
+
+void handleBleVitalsEvents() {
+  for (uint8_t i = 0; i < MAX_TRACKED_BLE_DEVICES; i++) {
+    TrackedBleDevice snapshot = {};
+    bool shouldPublish = false;
+
+    portENTER_CRITICAL(&bleStateMux);
+    if (trackedBleDevices[i].used && trackedBleDevices[i].pendingVitals) {
+      snapshot = trackedBleDevices[i];
+      trackedBleDevices[i].pendingVitals = false;
+      shouldPublish = true;
+    }
+    portEXIT_CRITICAL(&bleStateMux);
+
+    if (!shouldPublish) continue;
+    if (!publishBleVitals(snapshot)) {
+      portENTER_CRITICAL(&bleStateMux);
+      if (trackedBleDevices[i].used
+          && strncmp(trackedBleDevices[i].deviceId, snapshot.deviceId, BLE_DEVICE_ID_MAX_LENGTH) == 0
+          && trackedBleDevices[i].vitalsSequence == snapshot.vitalsSequence) {
+        trackedBleDevices[i].pendingVitals = true;
+      }
+      portEXIT_CRITICAL(&bleStateMux);
+    }
+  }
+}
+
+void publishStationHeartbeat() {
+  const unsigned long now = millis();
+  if (now - lastStationHeartbeatMs < STATION_HEARTBEAT_INTERVAL_MS) return;
+  lastStationHeartbeatMs = now;
+
+  ensureWiFi();
+  ensureMQTT();
+  if (!mqtt.connected()) return;
+
+  String topic = String(MQTT_ROOT_TOPIC) + "/stations/" + STATION_ID + "/heartbeat";
+  char payload[256];
+  snprintf(payload, sizeof(payload),
+           "{"
+           "\"protocolVersion\":1,"
+           "\"stationId\":\"%s\","
+           "\"event\":\"STATION_HEARTBEAT\","
+           "\"online\":true,"
+           "\"bleScanner\":true,"
+           "\"wifiRssi\":%d,"
+           "\"uptimeMs\":%lu"
+           "}",
+           STATION_ID,
+           WiFi.RSSI(),
+           now);
+  mqtt.publish(topic.c_str(), payload, false);
+}
+
+// ==================================================
 // RFID
 // ==================================================
 String uidToString(MFRC522::Uid uid) {
@@ -761,7 +1189,7 @@ void setup() {
   Serial.println();
   Serial.println("====================================");
   Serial.println(" MedPulse ESP32 Gateway");
-  Serial.println(" RC522 + MAX30102 + MLX90614 + MQTT");
+  Serial.println(" RC522 + MAX30102 + MLX90614 + BLE + MQTT");
   Serial.println("====================================");
 
   Wire.begin(SDA_PIN, SCL_PIN);
@@ -800,6 +1228,8 @@ void setup() {
   mqtt.setBufferSize(512);
   ensureMQTT();
 
+  initializeBleScanner();
+
   Serial.println();
   Serial.println("[SYSTEM] San sang.");
   Serial.println("Hay quet the RFID de bat dau do.");
@@ -816,6 +1246,11 @@ void loop() {
   if (mqtt.connected()) {
     mqtt.loop();
   }
+
+  handleBlePresenceEvents();
+  handleBleVitalsEvents();
+  publishStationHeartbeat();
+  maintainBleScanner();
 
   handleRFID();
   handleMeasuring();
