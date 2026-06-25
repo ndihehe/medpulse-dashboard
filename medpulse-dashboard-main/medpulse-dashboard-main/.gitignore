@@ -1,0 +1,6 @@
+﻿node_modules/
+.env
+server.out.log
+server.err.log
+tram_sketch/station_config.h
+thietbi_sketch/device_config.h

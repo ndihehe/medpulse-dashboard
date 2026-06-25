@@ -1,0 +1,33 @@
+{
+  "name": "web_dashboard",
+  "version": "1.0.0",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node tests/protocol-contract.test.js && node tests/e2e-flow.test.js && node tests/device-firmware-contract.test.js",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mqtt": "^5.15.1",
+    "mysql2": "^3.22.4",
+    "nodemailer": "^9.0.1",
+    "ws": "^8.21.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ndihehe/medpulse-dashboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ndihehe/medpulse-dashboard/issues"
+  },
+  "homepage": "https://github.com/ndihehe/medpulse-dashboard#readme",
+  "description": ""
+}
