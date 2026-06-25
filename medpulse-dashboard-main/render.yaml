@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: medpulse-dashboard
+    runtime: node
+    plan: free
+    root: medpulse-dashboard-main/medpulse-dashboard-main
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
