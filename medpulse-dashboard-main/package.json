@@ -1,0 +1,25 @@
+{
+  "name": "medpulse-dashboard",
+  "version": "1.0.0",
+  "description": "MedPulse IoT Dashboard - Wearable fall detection and vital signs monitoring",
+  "main": "medpulse-dashboard-main/medpulse-dashboard-main/server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node medpulse-dashboard-main/medpulse-dashboard-main/server.js",
+    "postinstall": "cd medpulse-dashboard-main/medpulse-dashboard-main && npm install",
+    "test": "cd medpulse-dashboard-main/medpulse-dashboard-main && npm test"
+  },
+  "keywords": ["iot", "healthcare", "fall-detection"],
+  "author": "ndihehe",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ndihehe/medpulse-dashboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ndihehe/medpulse-dashboard/issues"
+  },
+  "homepage": "https://github.com/ndihehe/medpulse-dashboard#readme"
+}
