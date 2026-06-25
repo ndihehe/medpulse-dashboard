@@ -2262,10 +2262,10 @@
 						<div class="rounded-2xl ${toast.tone === 'danger' ? 'bg-red-600' : toast.tone === 'warning' ? 'bg-amber-600' : 'bg-brand-600'} p-2 text-white"><i data-lucide="${toast.tone === 'danger' || toast.tone === 'warning' ? 'triangle-alert' : 'bell'}" class="h-4 w-4"></i></div>
 						<div class="min-w-0 flex-1">
 							<div class="flex items-center justify-between gap-3">
-								<div class="toast-title font-bold text-slate-950">${toast.title}</div>
+								<div class="toast-title font-bold text-slate-950" style="color:#071c33 !important;">${toast.title}</div>
 								<button data-action="dismiss-toast" data-id="${toast.id}" class="text-slate-500 transition hover:text-slate-800 dark:hover:text-slate-200"><i data-lucide="x" class="h-4 w-4"></i></button>
 							</div>
-							<div class="toast-message mt-1 text-sm font-medium leading-6 text-slate-800">${toast.message}</div>
+							<div class="toast-message mt-1 text-sm font-semibold leading-6 text-slate-800" style="color:#12395f !important; opacity:1 !important;">${toast.message}</div>
 							${toast.action === 'open-registration' ? `<button data-action="open-registration" data-id="${toast.patientId}" class="ui-btn ui-btn-primary mt-3 !min-h-9 !px-3 !py-2 text-xs"><i data-lucide="user-plus" class="h-4 w-4"></i>Nhập hồ sơ bệnh nhân</button>` : ''}
 						</div>
 					</div>
@@ -2292,9 +2292,9 @@
 					<div class="mt-4 space-y-3 max-h-[60vh] overflow-auto pr-1 hide-scrollbar">
 						${state.toastQueue.map((toast) => `
 							<div ${toast.action ? `data-action="${toast.action}" data-id="${toast.patientId}" role="button"` : ''} class="rounded-[16px] ${toast.tone === 'danger' ? 'bg-red-50 dark:bg-red-500/10' : toast.tone === 'warning' ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-brand-50 dark:bg-brand-500/10'} p-4 ${toast.action ? 'cursor-pointer' : ''}">
-								<div class="toast-title font-bold text-slate-950">${toast.title}</div>
-								<div class="toast-message mt-1 text-sm font-medium leading-6 text-slate-800">${toast.message}</div>
-								<div class="toast-time mt-2 text-xs font-semibold text-slate-700">${formatTime(toast.time || new Date())}</div>
+								<div class="toast-title font-bold text-slate-950" style="color:#071c33 !important;">${toast.title}</div>
+								<div class="toast-message mt-1 text-sm font-semibold leading-6 text-slate-800" style="color:#12395f !important; opacity:1 !important;">${toast.message}</div>
+								<div class="toast-time mt-2 text-xs font-semibold text-slate-700" style="color:#365872 !important;">${formatTime(toast.time || new Date())}</div>
 								${toast.action === 'open-registration' ? `<button data-action="open-registration" data-id="${toast.patientId}" class="ui-btn ui-btn-primary mt-3 !min-h-9 !px-3 !py-2 text-xs">Mở trang đăng ký</button>` : ''}
 							</div>
 						`).join('') || '<div class="rounded-[16px] bg-slate-50 p-4 text-sm font-medium text-slate-800">Không có thông báo mới</div>'}
