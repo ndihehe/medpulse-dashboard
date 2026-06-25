@@ -1993,7 +1993,7 @@ app.post('/api/auth/login', (req, res) => {
     }
 
     const email = normalizeAccountEmail(login);
-    if (!email) return res.status(400).json({ error: 'Email hoặc tài khoản demo không hợp lệ' });
+    if (!email) return res.status(400).json({ error: 'Email tài khoản manager không hợp lệ' });
 
     db.query(
         'SELECT id, email, password_salt, password_hash, role, active FROM users WHERE email = ? LIMIT 1',

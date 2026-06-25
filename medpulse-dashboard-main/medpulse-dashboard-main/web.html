@@ -1521,7 +1521,7 @@
 			return `
 				<div class="min-h-screen bg-[rgb(var(--panel-2))] dark:bg-slate-950">
 					<div class="mx-auto flex min-h-screen max-w-md items-center justify-center px-4 py-10 sm:px-6">
-							<section class="card w-full p-6 sm:p-8">
+							<section class="card w-full border border-slate-200 bg-white p-6 text-slate-900 shadow-[var(--shadow-card)] sm:p-8">
 								<div class="flex items-center justify-between">
 									<div>
 										<div class="flex items-center gap-3">
@@ -1529,31 +1529,25 @@
 												<i data-lucide="shield-plus" class="h-5 w-5"></i>
 											</div>
 											<div>
-												<div class="text-sm font-semibold text-slate-600 dark:text-slate-300">MedPulse</div>
-												<div class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Đăng nhập hệ thống</div>
+												<div class="text-sm font-bold text-brand-700">MedPulse</div>
+												<div class="mt-1 text-2xl font-bold tracking-tight text-slate-950">Đăng nhập hệ thống</div>
 											</div>
 										</div>
-									<p class="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">Truy cập trung tâm giám sát bệnh nhân theo thời gian thực.</p>
+									<p class="mt-4 text-sm font-medium leading-6 text-slate-700">Sử dụng tài khoản quản lý để truy cập trung tâm giám sát.</p>
 									</div>
 								</div>
 								<div class="mt-6 space-y-5">
 									<label class="block">
-										<span class="mb-2 block text-sm font-semibold text-slate-600 dark:text-slate-300">Email hoặc tài khoản demo</span>
-										<input data-bind="inputName" value="${escapeHtml(state.inputName)}" placeholder="manager@example.com hoặc nurse.le" class="w-full rounded-xl border border-[rgb(var(--border))] bg-white px-4 py-3.5 text-base text-slate-900 outline-none placeholder:text-slate-500 focus:border-brand-500 dark:bg-slate-950 dark:text-white" />
+										<span class="mb-2 block text-sm font-bold text-slate-800">Email tài khoản manager</span>
+										<input data-bind="inputName" value="${escapeHtml(state.inputName)}" placeholder="manager@example.com" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-base font-medium text-slate-900 outline-none placeholder:text-slate-500 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-100" />
 									</label>
 									<label class="block">
-										<span class="mb-2 block text-sm font-semibold text-slate-600 dark:text-slate-300">Mật khẩu</span>
-										<input data-bind="loginPin" value="${escapeHtml(state.loginPin)}" type="password" placeholder="••••••" class="w-full rounded-xl border border-[rgb(var(--border))] bg-white px-4 py-3.5 text-base text-slate-900 outline-none placeholder:text-slate-500 focus:border-brand-500 dark:bg-slate-950 dark:text-white" />
+										<span class="mb-2 block text-sm font-bold text-slate-800">Mật khẩu</span>
+										<input data-bind="loginPin" value="${escapeHtml(state.loginPin)}" type="password" placeholder="••••••" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-base font-medium text-slate-900 outline-none placeholder:text-slate-500 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-100" />
 									</label>
 									${state.loginError ? `<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">${escapeHtml(state.loginError)}</div>` : ''}
-									<div class="grid gap-3 sm:grid-cols-2">
-										<button data-action="demo-login" class="ui-btn ui-btn-primary" ${state.loginPending ? 'disabled' : ''}>${state.loginPending ? 'Đang đăng nhập...' : 'Vào dashboard'}</button>
-										<button data-action="fill-demo" class="ui-btn ui-btn-secondary" ${state.loginPending ? 'disabled' : ''}>Điền tài khoản demo</button>
-									</div>
-									<div class="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--panel-2))] p-4 text-sm text-slate-700 dark:text-slate-300">
-										Test nhanh: <span class="font-bold text-slate-900 dark:text-white">nurse.le</span> / <span class="font-bold text-slate-900 dark:text-white">demo123</span>. Tài khoản thật dùng <span class="font-bold text-slate-900 dark:text-white">MANAGER_EMAIL</span> và <span class="font-bold text-slate-900 dark:text-white">MANAGER_PASSWORD</span>.
-									</div>
-									<button data-action="show-landing" class="w-full text-sm font-semibold text-slate-600 hover:text-brand-700 dark:text-slate-300"><i data-lucide="arrow-left" class="mr-1 inline h-4 w-4"></i>Quay lại trang giới thiệu</button>
+									<button data-action="demo-login" class="ui-btn ui-btn-primary w-full" ${state.loginPending ? 'disabled' : ''}>${state.loginPending ? 'Đang đăng nhập...' : 'Đăng nhập'}</button>
+									<button data-action="show-landing" class="w-full text-sm font-bold text-slate-600 hover:text-brand-700"><i data-lucide="arrow-left" class="mr-1 inline h-4 w-4"></i>Quay lại trang giới thiệu</button>
 								</div>
 							</section>
 					</div>
